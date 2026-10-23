@@ -1,0 +1,99 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Dust Out test page</title>
+<body style="margin:0;background:#222;color:#ccc;font:12px system-ui">
+<div style="display:flex;gap:8px">
+  <div>self-view<video id="self" autoplay muted playsinline style="width:480px;height:270px;display:block"></video></div>
+  <div>what others see<video id="remote" autoplay muted playsinline style="width:480px;height:270px;display:block"></video></div>
+</div>
+<script>
+// Stand-in for Teams: camera + background filter -> one "filtered" track, shown in self-view.
+const cv = document.createElement('canvas');
+cv.width = 1280; cv.height = 720;
+const f = cv.getContext('2d');
+f.scale(2, 2);
+window.person = true;
+const bg = document.createElement('canvas');
+bg.width = 640; bg.height = 360;
+const b = bg.getContext('2d');
+for (let y = 0; y < 360; y += 40) for (let x = 0; x < 640; x += 40) {
+  b.fillStyle = `hsl(${(x * 7 + y * 3) % 60 + 5},${55 + (x + y) % 30}%,${25 + ((x * y) % 35)}%)`;
+  b.fillRect(x, y, 40, 40);
+}
+function draw(t) {
+  f.drawImage(bg, 0, 0);
+  if (window.person) {
+    const s = window.still ? 0 : Math.sin(t / 600) * 6;
+    f.save(); f.beginPath(); f.ellipse(320 + s, 340, 115, 125, 0, 0, Math.PI * 2); f.clip(); for (let i = 0; i < 20; i++) { f.fillStyle = i % 2 ? '#2f5fa8' : '#f1f1f1'; f.fillRect(200 + s + i * 12, 210, 12, 160); } f.restore();
+    f.fillStyle = '#9a6a48'; f.beginPath(); f.arc(320 + s, 150, 55, 0, 7); f.fill();
+    f.fillStyle = '#222'; f.beginPath(); f.arc(320 + s, 132, 57, Math.PI, 0); f.fill();
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+// Like Teams: the filtered video arrives as NV12 camera-format frames, 30 per second.
+// Lets tests see which track a sender really sends, past Snap Vanish's patch.
+window.nativeSenderTrack = Object.getOwnPropertyDescriptor(RTCRtpSender.prototype, 'track').get;
+window.filtered = (() => {
+  const gen = new MediaStreamTrackGenerator({ kind: 'video' }), wr = gen.writable.getWriter();
+  const W = 1280, H = 720, cw = W / 2, ch = H / 2, buf = new Uint8Array(W * H * 3 / 2);
+  const rd = document.createElement('canvas'); rd.width = W; rd.height = H;
+  const rx = rd.getContext('2d', { willReadFrequently: true });
+  let ts = 0;
+  setInterval(() => {
+    rx.drawImage(cv, 0, 0);
+    const d = rx.getImageData(0, 0, W, H).data;
+    for (let i = 0, p = 0; i < W * H; i++, p += 4) buf[i] = 16 + ((66 * d[p] + 129 * d[p + 1] + 25 * d[p + 2] + 128) >> 8);
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+      const p = (2 * y * W + 2 * x) * 4, q = W * H + 2 * (y * cw + x);
+      buf[q] = 128 + ((-38 * d[p] - 74 * d[p + 1] + 112 * d[p + 2] + 128) >> 8);
+      buf[q + 1] = 128 + ((112 * d[p] - 94 * d[p + 1] - 18 * d[p + 2] + 128) >> 8);
+    }
+    wr.write(new VideoFrame(buf, { format: 'NV12', codedWidth: W, codedHeight: H, timestamp: (ts += 33333) }));
+  }, 33);
+  return new MediaStream([gen]);
+})();
+// Fake mic: tests play snaps, speech-like tones and clicks into it.
+window.ac = new AudioContext();
+window.micOut = ac.createMediaStreamDestination();
+window.play = (kind, amp) => {
+  const n = ac.sampleRate * 0.4, buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) {
+    const t = i / ac.sampleRate;
+    if (kind === 'snap') d[i] = (Math.random() * 2 - 1) * amp * Math.exp(-t / 0.006) * Math.min(1, t / 0.0005);
+    if (kind === 'speech') d[i] = amp * Math.min(1, t / 0.08) * (Math.sin(2 * Math.PI * 180 * t) + 0.5 * Math.sin(2 * Math.PI * 360 * t) + 0.2 * Math.sin(2 * Math.PI * 3200 * t)) * Math.min(1, Math.max(0, (0.35 - t) / 0.05));
+    if (kind === 'click') d[i] = (Math.random() * 2 - 1) * amp * Math.exp(-t / 0.002);
+  }
+  const s = ac.createBufferSource(); s.buffer = buf; s.connect(micOut); s.start();
+};
+// Real mics hiss: keep a quiet noise floor running.
+{ const n = ac.sampleRate, bf = ac.createBuffer(1, n, ac.sampleRate), d = bf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * 0.002;
+  const s = ac.createBufferSource(); s.buffer = bf; s.loop = true; s.connect(micOut); s.start(); }
+const realGum = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+// Like a real mic: every request gets its own track, so stopping one doesn't stop the others.
+navigator.mediaDevices.getUserMedia = async (c) => c && c.audio && !c.video ? micOut.stream.clone() : realGum(c);
+document.getElementById('self').srcObject = filtered;
+// Lets tests see what a video element really shows, past Snap Vanish's patch.
+window.nativeSrc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'srcObject').get;
+// Like Teams: a big self-view showing a duplicate made before the bookmark ran,
+// and a hidden helper video (like the background filter's input).
+window.preClone = filtered.getVideoTracks()[0].clone();
+{ const v = document.createElement('video'); v.id = 'bigPre'; v.muted = true; v.autoplay = true; v.style.cssText = 'width:320px;height:180px';
+  v.srcObject = new MediaStream([preClone]); document.body.append(v); }
+{ const v = document.createElement('video'); v.id = 'hidden'; v.muted = true; v.autoplay = true; v.style.cssText = 'width:1px;height:1px;position:absolute;left:-10px';
+  v.srcObject = new MediaStream([filtered.getVideoTracks()[0].clone()]); document.body.append(v); }
+</script>
+<script>
+// Joining the meeting: send the filtered track over a real WebRTC connection.
+window.join = async () => {
+  const a = new RTCPeerConnection(), z = new RTCPeerConnection();
+  a.onicecandidate = (e) => e.candidate && z.addIceCandidate(e.candidate);
+  z.onicecandidate = (e) => e.candidate && a.addIceCandidate(e.candidate);
+  z.ontrack = (e) => { document.getElementById('remote').srcObject = new MediaStream([e.track]); };
+  window.sender = a.addTrack(filtered.getVideoTracks()[0], filtered);
+  await a.setLocalDescription(); await z.setRemoteDescription(a.localDescription);
+  await z.setLocalDescription(); await a.setRemoteDescription(z.localDescription);
+};
+</script>
+</body>

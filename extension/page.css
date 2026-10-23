@@ -1,0 +1,8 @@
+:root { --bg: #f6f3ee; --ink: #1b1b1f; --muted: #5d5a55; --card: #fff; --line: #e4ded4; --accent: #b8862f; --on-accent: #16161a; }
+@media (prefers-color-scheme: dark) { :root { --bg: #131316; --ink: #ececec; --muted: #a29d95; --card: #1c1c21; --line: #2c2c33; --accent: #e2c48a; } }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 system-ui, sans-serif; }
+main { max-width: 560px; margin: 0 auto; padding: 40px 16px; }
+h1 { font-size: 24px; margin: 0 0 10px; }
+button { padding: 9px 16px; border: 0; border-radius: 8px; background: var(--accent); color: var(--on-accent); font: 600 14px system-ui, sans-serif; cursor: pointer; }
+button.quiet { background: var(--card); color: var(--ink); border: 1px solid var(--line); }
+.note { color: var(--muted); font-size: 13px; }
