@@ -8,7 +8,7 @@ import { serve } from './serve.mjs';
 const site = await serve(8765);
 const helperSite = await serve(8777, new URL('../bookmarklet/', import.meta.url).pathname);
 const html = readFileSync(new URL('../bookmarklet/install.html', import.meta.url), 'utf8');
-const href = html.match(/class="drag" href="([^"]+)"/)[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+const href = html.match(/class="[^"]*\bdrag\b[^"]*" href="([^"]+)"/)[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const code = decodeURIComponent(href.slice('javascript:'.length));
 
 const results = [];
@@ -115,7 +115,7 @@ check('D1 room saved with you in it: stays live and explains', bad.state === 'li
 
 // E. Good save, full cycle, getting up early (0.4 s after the snap).
 await saveRoom(false);
-check('E1 thumbnail of the saved room is shown', await p.evaluate(() => [...document.querySelectorAll('canvas')].some((c) => c.style.display === 'block')));
+check('E1 thumbnail of the saved room is shown, labelled', await p.evaluate(() => document.body.innerText.includes('Saved empty room')));
 await p.keyboard.press('Alt+Shift+KeyV');
 await p.waitForTimeout(400);
 await p.evaluate(() => { window.person = false; });

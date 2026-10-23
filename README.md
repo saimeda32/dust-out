@@ -1,76 +1,74 @@
 # Dust Out
 
-Snap your fingers on a video call and crumble into dust. A minute later the dust flies back and you're there again.
+**Snap your fingers on a video call and crumble into dust. A minute later, you're back.**
 
-![Dust Out on a test scene: a person crumbles into dust, the room stays, then they reform](docs/demo.gif)
+A free Chrome extension for Microsoft Teams and Google Meet. No AI, no accounts, and nothing leaves your computer except the video your meeting already sends.
 
-It runs in Chrome on your own computer. It changes only your own outgoing video, it doesn't use any AI service, and no video or audio leaves your machine except what your meeting already sends.
+![The demo character snaps, crumbles into dust, the room stays empty, then the dust rewinds and they're back](docs/demo.gif)
 
-## What it does
+**[Install page](https://saimeda32.github.io/dust-out/)** · **[Download the extension](https://github.com/saimeda32/dust-out/releases/latest/download/dust-out-extension.zip)** · [Report a problem](https://github.com/saimeda32/dust-out/issues)
 
-- You snap, or press **Option+Shift+V** (Alt+Shift+V on Windows). The crumble starts at a few spots and spreads, the edges char, flakes peel off and break into dust that keeps the colours of your shirt, hair and skin, and drifts away.
-- The background stays, including a background filter from your meeting app. You crumble on top of it.
-- After 60 seconds (or another snap) the dust rewinds and you reform, live.
-- You stay live video until the moment you crumble. If you get up early, it finishes from a still taken at the snap.
-- It notices a real finger snap two ways: by sound (it learns your snap in three tries), or by watching your hand on camera.
+## Install (2 minutes)
+
+1. **[Download the extension](https://github.com/saimeda32/dust-out/releases/latest/download/dust-out-extension.zip)** and unzip it. You get a folder called `dust-out-extension`.
+2. In Chrome, open `chrome://extensions` (paste it into the address bar).
+3. Turn on **Developer mode** (switch in the top right corner).
+4. Click **Load unpacked** and choose the `dust-out-extension` folder.
+
+Done. It turns itself on in Teams and Google Meet.
+
+> Can't install extensions (for example on a work laptop)? Use the **bookmark** instead. It has to be dragged from a web page, so get it from the **[install page](https://saimeda32.github.io/dust-out/#install)**. The bookmark works on Teams; Google Meet blocks bookmarks, so Meet needs the extension.
+
+## Use it in a call
+
+<img src="docs/card.png" alt="The Dust Out card" width="220" align="right">
+
+1. Open your meeting **in Chrome** and join with your camera on. The Dust Out card appears at the bottom left.
+2. Click **Save empty room** and step fully out of view for 5 seconds. Check the **Saved empty room** picture on the card has no one in it, then sit back down.
+3. **Snap your fingers**, or press **Option+Shift+V** (Alt+Shift+V on Windows). Stay seated for about 3 seconds while you crumble.
+4. Leave. Everyone sees the empty room. Within a minute the dust flies back and you reform, or snap again to come back sooner.
+
+**What others see** on the card is exactly what your call sends, so you can always check it's working.
+
+To snap for real instead of using the shortcut: tick **Listen for a finger snap** and click **Teach my snap** (snap 3 times), or click **Hand gesture** to snap on camera.
+
+<br clear="right">
 
 ## Where it works
 
-| Meeting app (in Chrome) | Status |
+| In Chrome | |
 |---|---|
-| Microsoft Teams | Works. This is where it was built and used. |
-| Google Meet | Should work. Not yet tried in a real call, so reports are welcome. |
-| Other browser meeting apps (Webex, Jitsi, Whereby, Slack huddles, ...) | Turn it on per site from the toolbar button. Most of these send video the same way, so it should work, but they're untested. |
-| Zoom in the browser | Not supported yet. Zoom sends video differently. |
-| Desktop apps | No. It only runs in Chrome. |
+| Microsoft Teams | Works |
+| Google Meet | Should work with the extension; not tried in a real call yet |
+| Webex, Jitsi, Whereby, Slack huddles, other browser meetings | Click the Dust Out toolbar button on the site, choose **Turn on for this site**, reload before joining. Untested |
+| Zoom in the browser | Not supported yet |
+| Desktop apps | No |
 
-## Install
+## Something's not working?
 
-### Chrome extension (recommended)
-
-1. Download this repo (green **Code** button, then **Download ZIP**) and unzip it.
-2. Open `chrome://extensions`, switch on **Developer mode** (top right), click **Load unpacked** and pick the `extension` folder.
-3. Pin Dust Out from the puzzle-piece menu so you can reach its button.
-
-Teams and Google Meet are on straight away. For another meeting site, open it, click the Dust Out button and choose **Turn on for this site**. Chrome asks for permission for that one site.
-
-### Bookmark (for computers where you can't install extensions)
-
-Open `bookmarklet/install.html` in Chrome and drag the button to your bookmarks bar. It works on Teams. Google Meet blocks bookmarks from running code, so use the extension there. Instructions are on that page.
-
-## Using it
-
-1. Join your meeting with the camera on. A small Dust Out card appears at the bottom left with a **What others see** preview, which is exactly what your call is sending.
-2. Click **Save empty room** and step out of view for five seconds. It uses this picture to tell you apart from the room and to show while you're gone. Check the thumbnail has no one in it.
-3. Optional: **Teach my snap** (snap three times), or **Hand gesture** to snap on camera instead of by sound.
-4. Snap. Stay seated for about three seconds while you crumble, then you can leave.
-
-Keep the camera, lights and background filter the same as when you saved the room, or the swap will show.
+- **No card:** the meeting must be open in Chrome (not the desktop app) with your camera on. With the extension, you can also click its toolbar button and choose **Show the card**.
+- **Snap does nothing:** save the empty room first, then try **Option+Shift+V**.
+- **"Couldn't find you":** you were in the saved empty room, or the camera moved. Save it again.
+- Still stuck? Click **Copy diagnostics** on the card and paste it into a [new issue](https://github.com/saimeda32/dust-out/issues).
 
 ## How it works
 
-Browser meeting apps send your camera with WebRTC. Dust Out wraps the video track the app hands to WebRTC, after the app's own background filter, and draws the effect on each frame before it goes out. It finds you by comparing each frame with the saved empty room, then turns you into particles that move through a noise field with a little depth and a motion trail. The app still sees its own track everywhere it looks, so nothing else in the meeting changes.
-
-Your self-view gets the same treatment, so you see what everyone else sees. If something goes wrong, it falls back to your normal video and shows the error on the card. **Copy diagnostics** on the card copies a short summary for bug reports.
-
-Hand tracking uses Google's MediaPipe hand model, bundled inside the extension (see `extension/vendor/mediapipe`), so nothing is downloaded at runtime.
+Browser meeting apps send your camera over WebRTC. Dust Out wraps the video your meeting sends, after the meeting's own background filter, and draws the effect on each frame. It finds you by comparing each frame with the saved empty room, then turns you into particles that keep your real colours and drift away with a bit of depth. The meeting app still sees its own video everywhere, so nothing else changes. Hand tracking uses Google's MediaPipe model, bundled inside the extension.
 
 ## Privacy
 
-- No servers, no accounts, no analytics. It never sends anything anywhere.
-- It only runs on Teams, Google Meet, and sites you turn on yourself.
-- The microphone (snap by sound) and camera (hand gesture) are only used while those options are on, and only on your computer.
+No servers, no accounts, no analytics. It only changes your own outgoing video, only on Teams, Google Meet and sites you turn on. The mic and camera are used only while snap detection is on, and only on your computer.
 
-## Development
+## For developers
 
 ```
 npm install
-npx playwright install chromium   # Chrome for Testing, used by the extension tests
-npm test                          # builds, then runs both test suites
+npx playwright install chromium   # used by the extension tests
+npm test                          # build, then run both test suites
 ```
 
-`src/` holds the code. `node build.mjs` copies it into `extension/` and builds the bookmark page. The tests drive a page that behaves like a meeting app (camera frames in the same format Teams uses, a real two-way WebRTC call, pop-out windows, Meet's script rules) and check the effect, self-view, snap detection and hand-gesture path.
+The code is in `src/`. `node build.mjs` copies it into `extension/`, builds the install page in `docs/` and the extension zip. The demo character lives in `test/avatar.js`; `node test/demo-gif.mjs` re-records the demo.
 
 ## License
 
-MIT. The bundled MediaPipe files are Apache 2.0, see `extension/vendor/mediapipe/LICENSE`.
+MIT. Bundled MediaPipe files are Apache 2.0 (`extension/vendor/mediapipe/LICENSE`).

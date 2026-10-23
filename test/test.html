@@ -6,6 +6,7 @@
   <div>self-view<video id="self" autoplay muted playsinline style="width:480px;height:270px;display:block"></video></div>
   <div>what others see<video id="remote" autoplay muted playsinline style="width:480px;height:270px;display:block"></video></div>
 </div>
+<script>if (location.search.includes('avatar')) document.write('<script src="avatar.js"><\/script>');</script>
 <script>
 // Stand-in for Teams: camera + background filter -> one "filtered" track, shown in self-view.
 const cv = document.createElement('canvas');
@@ -21,6 +22,7 @@ for (let y = 0; y < 360; y += 40) for (let x = 0; x < 640; x += 40) {
   b.fillRect(x, y, 40, 40);
 }
 function draw(t) {
+  if (window.drawAvatar) { window.drawAvatar(f, t); requestAnimationFrame(draw); return; }
   f.drawImage(bg, 0, 0);
   if (window.person) {
     const s = window.still ? 0 : Math.sin(t / 600) * 6;

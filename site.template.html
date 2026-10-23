@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dust Out: snap and turn to dust on Teams and Google Meet</title>
+<meta name="description" content="Free Chrome extension: snap your fingers on a Microsoft Teams or Google Meet call and crumble into dust, then come back a minute later. Open source, no AI, nothing leaves your computer.">
+<meta property="og:title" content="Dust Out">
+<meta property="og:description" content="Snap your fingers on a video call and crumble into dust. Free Chrome extension for Teams and Google Meet.">
+<meta property="og:image" content="https://saimeda32.github.io/dust-out/social.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="__ASSETS__icon.png">
+<style>
+  :root { --bg: #f6f3ee; --ink: #1b1b1f; --muted: #5d5a55; --card: #fff; --line: #e4ded4; --accent: #b8862f; --on-accent: #16161a; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #131316; --ink: #ececec; --muted: #a29d95; --card: #1c1c21; --line: #2c2c33; --accent: #e2c48a; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 40px 16px 72px; }
+  h1 { font-size: 40px; margin: 0; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); font-size: 18px; margin: 6px 0 24px; }
+  .hero { width: 100%; max-width: 560px; border-radius: 12px; display: block; }
+  h2 { font-size: 22px; margin: 40px 0 8px; }
+  h3 { font-size: 17px; margin: 0 0 8px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 640px) { .row { grid-template-columns: 1fr; } h1 { font-size: 32px; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; }
+  .tag { display: inline-block; font-size: 12px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  ol { margin: 0; padding-left: 20px; }
+  li { margin: 6px 0; }
+  .btn { display: inline-block; padding: 11px 20px; border-radius: 10px; background: var(--accent); color: var(--on-accent); font-weight: 700; text-decoration: none; margin: 4px 0 10px; }
+  .drag { cursor: grab; }
+  kbd { font: 600 13px ui-monospace, monospace; padding: 1px 6px; border: 1px solid var(--line); border-radius: 5px; }
+  code { font: 14px ui-monospace, monospace; background: var(--card); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }
+  .note { color: var(--muted); font-size: 14px; }
+  .use { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: start; }
+  .use img { width: 220px; border-radius: 12px; }
+  @media (max-width: 640px) { .use { grid-template-columns: 1fr; } }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  td, th { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; margin: 8px 0; }
+  summary { font-weight: 600; cursor: pointer; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Dust Out</h1>
+  <p class="sub">Snap your fingers on a video call and crumble into dust. A minute later, you're back.</p>
+  <video class="hero" src="__ASSETS__demo.mp4" poster="__ASSETS__social.png" autoplay muted loop playsinline aria-label="The demo character snaps, crumbles into dust, the room stays empty, then they come back"></video>
+  <p class="note">Free and open source. Works in Chrome on Microsoft Teams and Google Meet. No AI, no accounts, and nothing leaves your computer except the video your meeting already sends. <a href="https://github.com/saimeda32/dust-out">Source on GitHub</a>.</p>
+
+  <h2 id="install">1. Install it</h2>
+  <div class="row">
+    <div class="card">
+      <span class="tag">Recommended</span>
+      <h3>Chrome extension</h3>
+      <a class="btn" href="https://github.com/saimeda32/dust-out/releases/latest/download/dust-out-extension.zip">Download the extension</a>
+      <ol>
+        <li>Unzip the download. You get a folder called <code>dust-out-extension</code>.</li>
+        <li>In Chrome, go to <code>chrome://extensions</code> (paste it into the address bar).</li>
+        <li>Turn on <b>Developer mode</b>, top right.</li>
+        <li>Click <b>Load unpacked</b> and choose the <code>dust-out-extension</code> folder.</li>
+        <li>Optional: click the puzzle piece next to the address bar and pin Dust Out.</li>
+      </ol>
+      <p class="note">That's it. It switches itself on in Teams and Google Meet.</p>
+    </div>
+    <div class="card">
+      <span class="tag">If you can't install extensions</span>
+      <h3>Bookmark</h3>
+      <a class="btn drag" href="__BOOKMARKLET__" title="Drag me to your bookmarks bar">Dust Out</a>
+      <ol>
+        <li>Show your bookmarks bar: <kbd>Cmd+Shift+B</kbd> on Mac, <kbd>Ctrl+Shift+B</kbd> on Windows.</li>
+        <li>Drag the <b>Dust Out</b> button above onto the bookmarks bar. Don't click it here; it only works inside a meeting.</li>
+        <li>In your meeting tab, click the bookmark on the screen before you join.</li>
+      </ol>
+      <p class="note">Works on Teams. Google Meet blocks bookmarks from running, so use the extension there. You click the bookmark again each time you reload the meeting page.</p>
+    </div>
+  </div>
+
+  <h2>2. Use it in a call</h2>
+  <div class="use">
+    <img src="__ASSETS__card.png" alt="The Dust Out card: status, a preview of what others see, the saved empty room, and buttons">
+    <ol>
+      <li>Open your meeting <b>in Chrome</b> (not the desktop app) and join with your camera on. The Dust Out card appears at the bottom left.</li>
+      <li>Click <b>Save empty room</b>, then step fully out of view for 5 seconds. Check that the <b>Saved empty room</b> picture has no one in it, then sit back down.</li>
+      <li>Snap your fingers, or press <kbd>Option+Shift+V</kbd> (<kbd>Alt+Shift+V</kbd> on Windows). Stay seated for about 3 seconds while you crumble.</li>
+      <li>You're gone. Everyone sees the empty room. Come back within a minute: the dust flies back and you reform on its own, or snap again to return sooner.</li>
+    </ol>
+  </div>
+  <p class="note"><b>What others see</b> on the card is exactly what your call is sending, so you can always check it's working. Keep your camera, lights and background filter the same as when you saved the room.</p>
+
+  <h2>3. Snap for real (optional)</h2>
+  <div class="row">
+    <div class="card">
+      <h3>By sound</h3>
+      <p>Tick <b>Listen for a finger snap</b>, click <b>Teach my snap</b> and snap 3 times, a second apart. It learns your snap on your mic and remembers it.</p>
+    </div>
+    <div class="card">
+      <h3>By hand gesture</h3>
+      <p>Click <b>Hand gesture</b> and allow the camera when asked. Snap with your hand in view. With the bookmark this needs a small helper running on your computer; the extension doesn't.</p>
+    </div>
+  </div>
+
+  <h2>Where it works</h2>
+  <table>
+    <tr><th>Meeting app, in Chrome</th><th></th></tr>
+    <tr><td>Microsoft Teams</td><td>Works.</td></tr>
+    <tr><td>Google Meet</td><td>Should work with the extension. Not tried in a real call yet; tell us how it goes.</td></tr>
+    <tr><td>Webex, Jitsi, Whereby, Slack huddles and other browser meetings</td><td>Open the site, click the Dust Out button in the toolbar, choose <b>Turn on for this site</b>, then reload before joining. Untested.</td></tr>
+    <tr><td>Zoom in the browser</td><td>Not supported yet.</td></tr>
+    <tr><td>Desktop apps</td><td>No, Chrome only.</td></tr>
+  </table>
+
+  <h2>Something's not working?</h2>
+  <details><summary>The card never appears</summary>
+    <p>Make sure the meeting is open in Chrome, not the desktop app, and that your camera is on. With the extension, the card shows once your camera joins a call; you can also click the Dust Out toolbar button and choose <b>Show the card</b>. With the bookmark, click it before joining.</p></details>
+  <details><summary>I snap and nothing happens</summary>
+    <p>Save the empty room first. Then try the shortcut <kbd>Option+Shift+V</kbd>. If the shortcut works but snapping doesn't, use <b>Teach my snap</b> again in a quiet moment.</p></details>
+  <details><summary>The card's preview shows the dust, but my own video doesn't</summary>
+    <p>Others still see it. Some meeting layouts show your self-view from a separate copy. Click <b>Copy diagnostics</b> on the card and open an issue with it.</p></details>
+  <details><summary>It says "Couldn't find you"</summary>
+    <p>The saved empty room had you in it, or the camera moved. Click <b>Save empty room</b> again and step fully out of view.</p></details>
+  <details><summary>My company laptop won't let me turn on Developer mode</summary>
+    <p>Use the bookmark instead (Teams only).</p></details>
+  <p class="note">Still stuck? <a href="https://github.com/saimeda32/dust-out/issues">Open an issue</a> and paste what <b>Copy diagnostics</b> gives you.</p>
+
+  <h2>Privacy</h2>
+  <p>Dust Out has no servers, no accounts and no analytics. It only changes your own outgoing video, only on Teams, Google Meet and sites you turn on yourself. The microphone and camera are used only while you've switched on snap detection, and only on your computer.</p>
+</main>
+</body>
+</html>

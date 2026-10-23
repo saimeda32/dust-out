@@ -98,8 +98,9 @@
         x.drawImage(frame, 0, 0, w, h);
         S.plate = c; S.plateVer++; S.plateAR = w / h;
         if (ui) {
-          ui.thumb.height = Math.round(ui.thumb.width * h / w);
-          ui.thumb.getContext('2d').drawImage(c, 0, 0, ui.thumb.width, ui.thumb.height);
+          const tc = ui.thumb.lastChild;
+          tc.height = Math.round(tc.width * h / w);
+          tc.getContext('2d').drawImage(c, 0, 0, tc.width, tc.height);
           ui.thumb.style.display = 'block';
         }
         say('Empty room saved. Check the picture has no one in it.');
@@ -785,8 +786,10 @@
   const handBtn = el('button', btnCss + 'background:#2b2b33;color:#ececec', 'Hand gesture');
   const hint = el('div', 'margin-top:8px;color:#8a8a8a;font-size:12px', 'Shortcut: Option+Shift+V');
   const diagBtn = el('button', 'margin-top:6px;padding:0;border:0;background:none;color:#8a8a8a;font:12px system-ui,sans-serif;text-decoration:underline;cursor:pointer', 'Copy diagnostics');
-  const thumb = el('canvas', 'display:none;width:100%;margin-top:8px;border-radius:6px');
-  thumb.width = 220;
+  const thumbCanvas = el('canvas', 'display:block;width:100%;border-radius:6px');
+  thumbCanvas.width = 220;
+  const thumb = el('div', 'display:none;margin-top:8px');
+  thumb.append(el('div', 'color:#8a8a8a;font-size:12px;margin-bottom:4px', 'Saved empty room'), thumbCanvas);
   // Exactly what the call is sending, whatever the meeting app shows in its own self-view.
   const previewBox = el('div', 'display:none;margin-top:8px');
   const preview = el('video', 'display:block;width:100%;border-radius:6px;background:#000');
