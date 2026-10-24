@@ -1,6 +1,4 @@
-// Cartoon meeting participants, drawn on a canvas. Used for the website's call gallery and to
-// record the demo. Each character has a look and a room; draw() animates blinking, breathing,
-// glancing, talking, a snap, and moods (talk, listen, surprised, happy).
+// Cartoon call participants for the website and the demo. Moods: talk, listen, surprised, happy.
 window.Character = function (o) {
   const W = 1280, H = 720;
   const look = Object.assign({
@@ -9,7 +7,7 @@ window.Character = function (o) {
     wall: ['#e9d8bd', '#d3bc9b', '#a88d70'], room: 'study',
   }, o || {});
 
-  // The room, pre-drawn once and softly blurred like a real camera background.
+  // Room, drawn once and blurred like a camera background.
   const room = document.createElement('canvas'); room.width = W; room.height = H;
   const r = room.getContext('2d');
   const wall = r.createLinearGradient(0, 0, W, H);
@@ -122,7 +120,7 @@ window.Character = function (o) {
     ctx.fillStyle = face; ctx.beginPath(); ctx.ellipse(0, 0, 108, 130, 0, 0, 7); ctx.fill();
     hairFront(ctx);
 
-    // Eyes: blink, glance (toward the main tile when gaze is set), widen when surprised.
+    // Eyes blink, glance and widen.
     const wide = mood === 'surprised' ? 1.35 : mood === 'happy' ? 0.6 : 1;
     const blink = ((t + look.gaze * 900) % 3800) < 140 ? 0.12 : 1;
     const glance = (look.gaze ? look.gaze * 7 : Math.sin(t / 1300) * 5);
@@ -169,7 +167,7 @@ window.Character = function (o) {
   return { draw, width: W, height: H };
 };
 
-// The three people in the website's call gallery.
+// The cast.
 window.CAST = {
   you: {},
   alex: { skin: '#f0c4a3', shade: '#d9a582', faceLight: '#f8d6bc', hair: '#8a4a2a', hairStyle: 'curly', shirt: '#d9a03b', shirtShade: '#b9842a', glasses: true, gaze: -1, wall: ['#dfe9ef', '#c9d8e1', '#9fb3bf'], room: 'kitchen' },

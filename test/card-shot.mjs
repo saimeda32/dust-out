@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { serve } from './serve.mjs';
 
 const site = await serve(8765);
-const html = readFileSync(new URL('../bookmarklet/install.html', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../docs/index.html', import.meta.url), 'utf8');
 const code = decodeURIComponent(html.match(/class="[^"]*\b(?:drag|chip)\b[^"]*" href="([^"]+)"/)[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').slice(11));
 const b = await chromium.launch({ channel: 'chrome', headless: true, args: ['--disable-features=WebRtcHideLocalIpsWithMdns', '--allow-loopback-in-peer-connection'] });
 const p = await b.newPage({ viewport: { width: 1000, height: 820 }, deviceScaleFactor: 2 });

@@ -1,5 +1,4 @@
-// Hidden page that watches the camera for a finger snap and tells the extension. Hand tracking
-// (MediaPipe, bundled with the extension) runs here, outside the meeting page's security rules.
+// Offscreen page: watches the camera for a finger snap with bundled MediaPipe.
 import { FilesetResolver, HandLandmarker } from './vendor/mediapipe/vision_bundle.mjs';
 import { makeSnapDetector } from './gesture-detect.js';
 
@@ -22,7 +21,7 @@ async function cameraBlocked() {
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 360, frameRate: 30 } });
   } catch (e) {
-    // Only a missing permission needs the setup tab; a busy or missing camera won't be fixed by it.
+    // Only a missing permission needs the setup tab.
     if (e.name === 'NotAllowedError' && await cameraBlocked()) return send('hand-need-camera');
     return send('hand-failed', e.name === 'NotFoundError' ? 'No camera found for hand gesture.' : 'The camera is busy or unavailable for hand gesture (' + e.name + ').');
   }
@@ -32,10 +31,9 @@ async function cameraBlocked() {
     let marker;
     try { marker = await makeMarker(vision, 'GPU'); } catch (_) { marker = await makeMarker(vision, 'CPU'); }
     send('hand-status', 'Hand gesture on. Snap with your hand in view.');
-    // Driven by camera frames, not timers, so it keeps going while you're in another window.
+    // Frame-driven, so it keeps running in the background.
     const reader = new MediaStreamTrackProcessor({ track: stream.getVideoTracks()[0] }).readable.getReader();
-    // One detector per hand. MediaPipe can list the hands in a different order each frame, so
-    // they're matched by left/right rather than by position in the list.
+    // One detector per hand, keyed by left/right (list order can change).
     const detect = { Left: makeSnapDetector(), Right: makeSnapDetector() };
     for (;;) {
       const { value: frame, done } = await reader.read();

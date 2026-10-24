@@ -1,7 +1,6 @@
 // One source, every way to use it. Run: node build.mjs
 //   src/dust-out.js       -> extension/dust-out.js (Chrome extension)
 //                         -> docs/index.html (website, with the bookmark button)
-//                         -> bookmarklet/install.html (the same page, for offline use)
 //                         -> docs/dust-out.js (the code to paste into the console)
 //   src/gesture-detect.js -> extension/ and bookmarklet/ (hand-gesture snap detector)
 //   extension/            -> dist/dust-out-extension.zip (download for "Load unpacked")
@@ -22,7 +21,6 @@ const page = (assets) => readFileSync(here('./site.template.html'), 'utf8')
   .replaceAll('__ASSETS__', assets)
   .replace('__TIMELINE__', readFileSync(here('./docs/demo-timeline.json'), 'utf8').trim());
 writeFileSync(here('./docs/index.html'), page(''));
-writeFileSync(here('./bookmarklet/install.html'), page('../docs/'));
 
 // The extension as a zip with a clear folder name, for the download button.
 const dist = here('./dist/').pathname;
@@ -30,4 +28,4 @@ rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist + 'dust-out-extension', { recursive: true });
 execFileSync('cp', ['-R', here('./extension/').pathname + '.', dist + 'dust-out-extension/']);
 execFileSync('zip', ['-qr', 'dust-out-extension.zip', 'dust-out-extension'], { cwd: dist });
-console.log('built extension/, docs/index.html, bookmarklet/install.html, dist/dust-out-extension.zip');
+console.log('built extension/, docs/index.html, docs/dust-out.js, dist/dust-out-extension.zip');

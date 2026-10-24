@@ -1,5 +1,4 @@
-// Turn Dust Out on or off for the meeting site in the current tab. Teams and Meet are built in;
-// any other site gets its own permission, asked for only when you turn it on here.
+// Turn Dust Out on or off for the current site. Teams and Meet are built in.
 const BUILT_IN = ['https://teams.microsoft.com', 'https://teams.cloud.microsoft', 'https://teams.live.com', 'https://meet.google.com'];
 const $ = (id) => document.getElementById(id);
 const state = (text) => { $('state').textContent = text; };
@@ -46,7 +45,7 @@ const state = (text) => { $('state').textContent = text; };
         ]);
         state('On for ' + url.hostname + '. It starts after this page reloads, so do it before you join a call.');
       }
-      // Reloading would drop you out of a live call, so it's your choice when.
+      // Don't auto-reload: it would drop a live call.
       siteBtn.hidden = true;
       reloadBtn.hidden = false;
     } catch (e) {

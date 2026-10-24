@@ -41,7 +41,7 @@ function draw(t) {
 }
 requestAnimationFrame(draw);
 // Like Teams: the filtered video arrives as NV12 camera-format frames, 30 per second.
-// Lets tests see which track a sender really sends, past Snap Vanish's patch.
+// Lets tests see which track a sender really sends, past Dust Out's patch.
 window.nativeSenderTrack = Object.getOwnPropertyDescriptor(RTCRtpSender.prototype, 'track').get;
 window.filtered = (() => {
   const gen = new MediaStreamTrackGenerator({ kind: 'video' }), wr = gen.writable.getWriter();
@@ -85,7 +85,7 @@ const realGum = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
 // Installed underneath, like Chrome's own camera, so anything that wrapped it first stays on top.
 MediaDevices.prototype.getUserMedia = async function (c) { return c && c.video ? new MediaStream([filtered.getVideoTracks()[0].clone()]) : c && c.audio ? micOut.stream.clone() : realGum(c); };
 document.getElementById('self').srcObject = filtered;
-// Lets tests see what a video element really shows, past Snap Vanish's patch.
+// Lets tests see what a video element really shows, past Dust Out's patch.
 window.nativeSrc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'srcObject').get;
 // Like Teams: a big self-view showing a duplicate made before the bookmark ran,
 // and a hidden helper video (like the background filter's input).

@@ -1,11 +1,9 @@
-// Dust Out: snap your fingers on a video call and crumble into dust, then come back.
-// Runs entirely inside the meeting tab. No video or audio leaves your computer except what the
-// meeting already sends. Works as a Chrome extension or as a bookmark.
+// Dust Out: snap on a video call, crumble into dust, come back. Runs only in this tab.
 (() => {
   'use strict';
   if (window.__dustOut) { window.__dustOut.show(); return; }
   try { if (window.opener && window.opener.__dustOut) { window.opener.__dustOut.show(); return; } } catch (_) { /* opener is another site */ }
-  // The extension loads this before the meeting page starts; the bookmark runs it on demand.
+  // Set by the extension, which loads before the page; bookmark and console run later.
   const EXT = window.__dustOutExt === true;
   const CAMERA_FIRST = /(^|\.)meet\.google\.com$/.test(location.hostname);
   let ui = null; // the control card, once built
@@ -37,10 +35,9 @@
     else if (S.state === 'gone') go('returning');
   }
 
-  // Called on every camera frame, so timing keeps working when the tab is in the background.
+  // Runs per camera frame, so it keeps time in background tabs.
   function tick() {
     const t = now() - S.t0;
-    // A snap only counts if video was flowing at the time, never minutes later.
     if (S.armAt && now() - S.armAt > 2) S.armAt = 0;
     if (S.armAt && now() >= S.armAt) { S.armAt = 0; if (S.state === 'live') go('vanishing'); }
     else if (S.state === 'vanishing' && t >= CRUMBLE) go('gone');
@@ -54,7 +51,7 @@
     return ((n ^ (n >>> 16)) >>> 0) / 4294967296;
   };
   const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-  // Smooth value noise, a few octaves: gives organic, uneven patches instead of a straight wipe.
+  // Value noise, for uneven patches.
   const vnoise = (x, y) => {
     const xi = Math.floor(x), yi = Math.floor(y), fx = smooth(0, 1, x - xi), fy = smooth(0, 1, y - yi);
     const a = hash(xi, yi), b = hash(xi + 1, yi), c = hash(xi, yi + 1), d = hash(xi + 1, yi + 1);
@@ -67,9 +64,8 @@
     return [c, c.getContext('2d', read ? { willReadFrequently: true } : undefined)];
   };
 
-  // One video pipeline. Layers, back to front: saved empty room, the live parts of you that
-  // haven't crumbled yet (soft ragged edge, charred rim), then the dust.
-  // Heavy work runs at about 640x360 whatever the camera sends; the GPU scales it back up.
+  // One video pipeline: empty room, then the live you that hasn't crumbled, then dust.
+  // Heavy work runs at ~640x360; the GPU scales it up.
   class Job {
     constructor(gen) {
       this.gen = gen;
@@ -87,7 +83,7 @@
     }
 
     process(frame) {
-      // Only the camera the meeting app is sending right now runs the effect; older copies pass through.
+      // Only the current camera runs the effect.
       if (!S.active || S.active.readyState === 'ended') S.active = this.gen;
       if (S.active !== this.gen) return frame;
       tick();
@@ -119,28 +115,26 @@
 
       const back = S.state === 'returning';
       const t = now() - S.t0;
-      // Coming back plays the crumble in reverse, sped up and eased, like rewinding time.
+      // Coming back replays the crumble backwards, faster.
       const tt = back ? CRUMBLE * (1 - smooth(0, 1, t / RETURN)) : Math.min(CRUMBLE, t);
       this.hx.drawImage(frame, 0, 0, w / q, h / q);
       this.findYou();
       const live = this.hx.getImageData(0, 0, W, H).data;
       if (this.anim !== S.anim) {
         this.anim = S.anim;
-        // A different picture shape than the saved room would make everything look like "you".
         if (!back && Math.abs(w / h - S.plateAR) > 0.02) {
           go('live');
           say('The video shape changed. Save the empty room again.');
           return frame;
         }
-        // If you barely differ from the saved room, you were in it. Stay live instead of glitching.
+        // Barely differs from the saved room: you were in it.
         if (!back && this.core < 0.06) {
           go('live');
           say("Couldn't find you. Save the empty room again, fully out of view.");
           return frame;
         }
         this.start(back);
-        // Keep a still of you from the snap. If you get up before the crumble reaches a spot,
-        // that spot still crumbles from the still instead of vanishing with no dust.
+        // Still from the snap, used if you get up before the crumble finishes.
         this.stx.globalCompositeOperation = 'copy';
         this.stx.drawImage(frame, 0, 0, w, h);
         this.stillBody = back ? new Float32Array(this.body.length) : this.body.slice();
@@ -154,8 +148,7 @@
       return this.emit(frame);
     }
 
-    // Hand back a frame in the same pixel format the meeting app gave us. Some (Teams) freeze
-    // on frames in any other format (camera YUV in, canvas RGB out = frozen picture).
+    // Return the input's pixel format; Teams freezes on anything else.
     emit(frame, still) {
       const f = frame.format, ts = frame.timestamp;
       if (f !== 'NV12' && f !== 'I420') return new VideoFrame(this.cv, { timestamp: ts });
@@ -163,7 +156,6 @@
       const nv12 = f === 'NV12', key = f + w + 'x' + h;
       let out;
       if (still) {
-        // The empty room never changes: convert it once.
         if (this.stillKey !== key + ':' + S.plateVer) {
           this.stillYuv = this.toYuv(this.cx.getImageData(0, 0, w, h).data, new Uint8Array(size), nv12);
           this.stillKey = key + ':' + S.plateVer;
@@ -214,7 +206,7 @@
       this.anim = -1;
     }
 
-    // Count set cells in the (2r+1)^2 square around every cell, via a summed-area table.
+    // Neighbour counts via a summed-area table.
     around(src, r, fn) {
       const { sw, sh, sum } = this, S1 = sw + 1;
       for (let y = 0; y < sh; y++) {
@@ -230,7 +222,7 @@
       }
     }
 
-    // Where are you right now? Compare a tiny copy of the frame with the saved empty room.
+    // Find you: compare a tiny frame with the saved room.
     findYou() {
       const { sw, sh, g, W, H } = this, n = sw * sh, pl = this.plateSmall;
       this.sx.drawImage(this.hv, 0, 0, W, H, 0, 0, W / g, H / g);
@@ -240,7 +232,6 @@
         const j = i * 4;
         m[i] = Math.abs(cur[j] - pl[j]) + Math.abs(cur[j + 1] - pl[j + 1]) + Math.abs(cur[j + 2] - pl[j + 2]) > 50 ? 1 : 0;
       }
-      // Drop camera-noise specks, grow the edge a little, then soften it.
       let core = 0;
       this.around(m, 1, (i, c) => { if (m[i] && c >= 4) { keep[i] = 1; core++; } });
       this.around(keep, 1, (i, c) => { grow[i] = c ? 1 : 0; });
@@ -248,7 +239,7 @@
       this.core = S.core = core / n;
     }
 
-    // Plan the crumble: it starts at a few spots on you and spreads unevenly, like the film.
+    // Plan the crumble: a few starting spots, spreading unevenly.
     start(back) {
       const { sw, sh, W: w, H: h, grow } = this, n = sw * sh, g = this.g;
       const cells = [];
@@ -263,7 +254,7 @@
         dist[i] = d;
         if (grow[i]) far = Math.max(far, d);
       }
-      // Blow the dust toward whichever side of the picture has more room.
+      // Blow toward the side with more room.
       let mx = 0;
       for (const c of cells) mx += c % sw;
       const wind = cells.length && mx / cells.length > sw / 2 ? -1 : 1;
@@ -271,9 +262,9 @@
       for (const k of ['delay', 'edge', 'life', 'vx', 'vy', 'gvx', 'gvy', 'amp', 'freq', 'ph', 'z']) P[k] = new Float32Array(n);
       for (let i = 0; i < n; i++) {
         const x = i % sw, y = (i / sw) | 0, r = Math.random();
-        // Flakes: 3x3 cells peel off together as one chunk, then break up into dust.
+        // 3x3 cells flake off together.
         const fx = Math.floor(x / 3), fy = Math.floor(y / 3), fr = hash(fx + 101, fy + 57), fr2 = hash(fx + 7, fy + 211);
-        // Chain reaction: the crumble creeps at first, then races across you.
+        // Starts slow, then speeds up.
         P.delay[i] = 0.1 + SPREAD * Math.pow(Math.min(1, 0.72 * dist[i] / far + 0.28 * fbm(x * 0.09, y * 0.09)), 0.6) + 0.06 * fr;
         P.edge[i] = (hash(x * 3 + 1, y * 7 + 3) - 0.5) * 0.14; // ragged break-up line
         const heavy = r < 0.12;
@@ -281,10 +272,10 @@
         P.vx[i] = wind * (0.4 + 0.45 * Math.random()) * w;
         P.vy[i] = heavy ? (0.05 + 0.1 * Math.random()) * h : -(0.04 + 0.28 * Math.random()) * h;
         P.gvx[i] = wind * (0.3 + 0.35 * fr) * w;
-        // Depth: most dust drifts toward the camera and grows, some falls back and shrinks.
+        // Depth: most dust comes toward the camera.
         P.z[i] = -0.45 + 1.45 * Math.random();
         P.gvy[i] = -(0.02 + 0.12 * fr2) * h;
-        // Neighbours share a swirl phase, so dust travels in curling streams, not as random noise.
+        // Shared swirl phase gives curling streams.
         P.amp[i] = (0.02 + 0.05 * Math.random()) * h;
         P.freq[i] = 3 + 5 * Math.random();
         P.ph[i] = fbm(x * 0.05 + 40, y * 0.05) * 9 + 0.6 * Math.random();
@@ -292,8 +283,7 @@
       if (back) P.active.fill(1);
     }
 
-    // Live you, minus the parts already crumbled. The tiny mask is scaled up smoothly,
-    // so the break-up edge is soft and ragged instead of blocky.
+    // Live you minus crumbled parts; the upscaled mask gives a soft edge.
     drawBody(frame, tt, back) {
       const { sw, sh, w, h, body, stillBody, p: P } = this, n = sw * sh, cell = this.g * this.q;
       const mk = this.mkImg.data, ms = this.msImg.data, ck = this.ckImg.data;
@@ -301,7 +291,7 @@
         const left = P.delay[i] + P.edge[i] - tt, on = smooth(-0.05, 0.05, left);
         mk[i * 4 + 3] = 255 * body[i] * on;
         ms[i * 4 + 3] = 255 * stillBody[i] * on;
-        // Leaving: skin chars dark just before it breaks off. Coming back: a green time-glow at the seam.
+        // Dark char before breaking off; green glow when coming back.
         const rim = on * (1 - smooth(0, 0.4, left));
         if (back) { ck[i * 4] = 90; ck[i * 4 + 1] = 255; ck[i * 4 + 2] = 170; ck[i * 4 + 3] = 255 * rim * 0.7; }
         else { ck[i * 4] = 34; ck[i * 4 + 1] = 26; ck[i * 4 + 2] = 22; ck[i * 4 + 3] = 255 * rim * 0.6; }
@@ -317,7 +307,6 @@
         x.drawImage(mask, 0, 0, sw, sh, 0, 0, sw * cell, sh * cell);
         x.globalCompositeOperation = 'source-over';
       };
-      // The still underneath, live you on top: sitting still you see live video.
       cut(this.bx, this.st, this.ms);
       cut(this.lbx, frame, this.mk);
       const { bx } = this;
@@ -330,7 +319,6 @@
     drawDust(live, tt, back) {
       const { sw, g, W: w, H: h, grow, p: P } = this, n = sw * this.sh, out = this.dust.data;
       out.fill(0);
-      // Paint onto a transparent layer ("over" blending with straight alpha).
       const blend = (dx, dy, r, gg, b, a) => {
         if (dx < 0 || dy < 0 || dx >= w || dy >= h || a <= 0.004) return;
         const di = (dy * w + dx) * 4, da = out[di + 3] / 255, oa = a + da * (1 - a), k = da * (1 - a);
@@ -339,7 +327,7 @@
         out[di + 2] = (b * a + out[di + 2] * k) / oa;
         out[di + 3] = oa * 255;
       };
-      // Soft round speck with sub-pixel falloff, so dust looks like dust, not squares.
+      // Soft round speck.
       const splat = (cx, cy, rad, r, gg, b, a) => {
         const x0 = Math.floor(cx - rad), x1 = Math.ceil(cx + rad), y0 = Math.floor(cy - rad), y1 = Math.ceil(cy + rad), r2 = rad * rad;
         for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
@@ -348,7 +336,7 @@
         }
       };
       const midX = w / 2, midY = h / 2, pl = this.plateSmall;
-      // Where a piece is at progress p, in screen pixels (pX, pY), plus its depth scale (pD).
+      // Position (pX, pY) and depth scale (pD) at progress p.
       let pX = 0, pY = 0, pD = 1;
       const pos = (i, p, x0, y0) => {
         const e = Math.pow(p, 1.6), sw = P.amp[i] * p;
@@ -369,12 +357,10 @@
         const x0 = (i % sw) * g, y0 = ((i / sw) | 0) * g, base = i * gg2 * 3;
         let col = P.color;
         if (back) {
-          // Coming back: dust flies in to wherever you are sitting now, in your live colours.
           if (!grow[i]) continue;
           col = null;
         } else if (!P.active[i]) {
-          // Leaving: a piece breaks off the moment the crumble reaches it, carrying its colours from
-          // that instant (from the still if you've already got up).
+          // Colours are taken the moment a piece breaks off.
           if (!grow[i] && !this.stillGrow[i]) continue;
           P.active[i] = 1;
           const from = grow[i] ? live : this.stillLive;
@@ -388,8 +374,7 @@
         const X = pX, Y = pY, d = pD;
         const a = Math.pow(1 - p, 0.75);
         if (p < 0.22) {
-          // A chunk that just broke off: keeps your real texture, charred at first (glowing green on
-          // the way back), shrinking as it crumbles.
+          // Fresh chunk: real texture, shrinking.
           const ch = 0.45 * (1 - p / 0.22), s = Math.max(1, Math.round(g * (1 - p * 1.6)));
           const [tr, tg, tb] = back ? [90, 255, 170] : [34, 26, 22];
           for (let j = 0; j < s; j++) for (let k = 0; k < s; k++) {
@@ -398,21 +383,19 @@
           }
           continue;
         }
-        // Fine dust keeps the colour of where it came from (shirt, hair, skin), drifting slightly toward ash.
+        // Dust keeps your colours, drifting toward ash.
         const c = g >> 1, fade = 0.3 * p;
         let r = px(c, c, 0) + (150 - px(c, c, 0)) * fade, gr = px(c, c, 1) + (142 - px(c, c, 1)) * fade, b = px(c, c, 2) + (134 - px(c, c, 2)) * fade;
-        // It picks up the light of whatever is behind it, so it sits in the scene instead of on top.
+        // Tint from the background behind it.
         const cxl = (X / g) | 0, cyl = (Y / g) | 0;
         if (cxl >= 0 && cyl >= 0 && cxl < sw && cyl < this.sh) {
           const li = (cyl * sw + cxl) * 4, k = 0.3 * p;
           r += (pl[li] - r) * k; gr += (pl[li + 1] - gr) * k; b += (pl[li + 2] - b) * k;
         }
-        // On the way back the dust carries a Time Stone green that fades as it lands.
         if (back) { const k = 0.55 * p; r += (90 - r) * k; gr += (255 - gr) * k; b += (170 - b) * k; }
-        // Nearer dust is bigger and softer; farther dust smaller.
         const rad = (g * 0.7 * (1 - 0.5 * p) + 0.6) * d, aa = d > 1 ? a / Math.sqrt(d) : a;
         splat(X, Y, rad, r, gr, b, aa);
-        // Motion trail: a faint copy where it just was.
+        // Motion trail.
         pos(i, Math.max(0, p - 0.035), x0, y0);
         splat(pX, pY, rad * 0.8, r, gr, b, aa * 0.35);
       }
@@ -420,7 +403,7 @@
     }
   }
 
-  // Run the effect on a copy of a track the meeting app owns. It keeps its own track and stops it as usual.
+  // Process a copy of the app's track; the app keeps its own.
   function hook(src) {
     const proc = new RealProcessor({ track: src });
     const gen = new MediaStreamTrackGenerator({ kind: 'video' });
@@ -454,7 +437,6 @@
     return gen;
   }
 
-  // Errors used to be swallowed (you'd just look live). Show them on the card instead.
   function failed(e) {
     S.err = (S.err || 0) + 1;
     S.lastErr = String(e && (e.stack || e.message) || e).slice(0, 300);
@@ -462,20 +444,17 @@
     if (S.err === 1 || S.err % 100 === 0) say('Effect error: ' + (e && e.message || e));
   }
 
-  // The meeting app's background filter sits between the camera and the call, so hook the video it
-  // actually sends. You crumble on top of the filter's background, not under it.
+  // Hook the video the app sends (after its background filter).
   const ours = new WeakMap();   // the meeting app's track -> our copy
   const theirs = new WeakMap(); // our copy -> the meeting app's track
   const views = []; // [window, its original srcObject accessor]: this tab, call pop-outs, frames
   const senders = new Map(); // sender -> [the meeting app's track, native replaceTrack], to undo on exit
   const isStream = (st) => st && typeof st.getVideoTracks === 'function';
-  // The meeting app shows your self-view from a duplicate of the video it sends, not the same object.
-  // Track duplicates (clones) back to their original, and mark other people's video as remote.
+  // Self-views often use a clone of the sent track; track clones and remote tracks.
   const family = new WeakMap(); // clone -> original
   const remote = new WeakSet();
   const rootOf = (t) => { let r = t; while (family.has(r)) r = family.get(r); return r; };
-  // The copy to show instead of track t, or null when t isn't your outgoing camera. `loose`
-  // allows the same-camera guess; only used for visible tiles, never for the meeting app's own filter input.
+  // Our copy for track t, or null. `loose` allows a same-camera guess (visible tiles only).
   function copyFor(t, loose) {
     if (!t || t.kind !== 'video' || t.readyState !== 'live' || remote.has(t) || theirs.has(t)) return null;
     const own = ours.get(t);
@@ -484,21 +463,20 @@
     if (!sent || g.readyState === 'ended') return null;
     if (rootOf(t) === rootOf(sent)) return g;
     if (!loose) return null;
-    // Duplicates made before the bookmark ran can't be traced; fall back to "same camera, same size".
     const a = t.getSettings ? t.getSettings() : {}, b = sent.getSettings ? sent.getSettings() : {};
     if (a.displaySurface || t.label !== sent.label) return null;
     if (a.width && b.width && (a.width !== b.width || a.height !== b.height)) return null;
     return g;
   }
 
-  // Never let a problem here break the meeting app's own camera handling: fall back to its original track.
+  // Never break the app: on error, give back its own track.
   function wrap(t) {
     try { return wrapUnsafe(t); } catch (e) { failed(e); return t; }
   }
   function wrapUnsafe(t) {
     if (!t || t.kind !== 'video' || theirs.has(t) || t.readyState === 'ended') return t;
     if (typeof MediaStreamTrackProcessor === 'undefined') return t;
-    // Leave screen sharing alone: only your camera crumbles.
+    // Skip screen sharing.
     const set = t.getSettings ? t.getSettings() : {};
     if (set.displaySurface || t.contentHint === 'detail' || t.contentHint === 'text') return t;
     let g = ours.get(t);
@@ -515,7 +493,6 @@
         } catch (_) { /* window closed */ }
       }
     }
-    // The newest camera the meeting app sends is the one that crumbles; older copies just pass video through.
     if (S.active !== g && ui) { ui.preview.srcObject = new MediaStream([g]); ui.previewBox.style.display = 'block'; ui.preview.play().catch(() => {}); }
     if (EXT && !S.calls && ui) ui.box.style.display = ''; // first camera in a call: show the card
     S.active = g;
@@ -524,22 +501,20 @@
   }
   function swapped(st, g) {
     const m = new MediaStream([g, ...st.getAudioTracks()]);
-    m.__snapOrig = st;
+    m.__dustOutOriginal = st;
     S.swaps = (S.swaps || 0) + 1;
     return m;
   }
 
-  // Sites like Google Meet lock some built-in objects so nothing new can be added to them, so
-  // what's already hooked is remembered here rather than marked on the objects themselves.
+  // Some sites (Meet) lock built-ins, so hooked objects are tracked here, not marked.
   const patched = new WeakSet();
-  // Replace a property, even on objects a site has partly locked. Returns false if it can't.
+  // Replace a property where possible; false if locked.
   function override(obj, key, desc) {
     try { if ('value' in desc) { obj[key] = desc.value; if (obj[key] === desc.value) return true; } } catch (_) {}
     try { Object.defineProperty(obj, key, Object.assign({ configurable: true }, desc)); return true; } catch (_) { return false; }
   }
 
-  // Camera route, for sites that lock their call code: wrap the camera video the site asks for.
-  // The effect then sits under any background effect the site adds itself.
+  // Camera route, for sites that lock their call code (effect sits under their background).
   function patchCamera(win) {
     const devs = win.navigator.mediaDevices;
     if (!devs || patched.has(devs)) return;
@@ -555,29 +530,26 @@
     const ok = override(devs, 'getUserMedia', { value: hooked, writable: true }) ||
       override(win.MediaDevices.prototype, 'getUserMedia', { value: function (c) { return hooked(c); }, writable: true });
     S.route = ok ? 'camera' : 'none';
-    // Run late (bookmark or console) the camera is usually on already, so it needs a fresh start.
     const late = !EXT || document.readyState !== 'loading';
     if (!ok) say("This site locks its camera and call code, so Dust Out can't reach your video here.");
     else if (late) say('Turn your camera off and on once so Dust Out can take over.');
   }
 
-  // Hook the call machinery and the video elements of a window: this tab, a call window the app
-  // pops out, or a frame inside either. A pop-out can run its own copy of the call.
+  // Hook calls and video elements in a window (this tab, a pop-out, or a frame).
   function patchWin(win) {
     const PC = win.RTCPeerConnection && win.RTCPeerConnection.prototype, TX = win.RTCRtpSender && win.RTCRtpSender.prototype;
-    // Google Meet sends your video through call code Dust Out can't reach, so it always uses the
-    // camera route there (and only that route, so the effect is never applied twice).
+    // Meet: camera route only, so the effect is applied once.
     if (CAMERA_FIRST) patchCamera(win);
     else if (PC && TX && !patched.has(PC)) {
       patched.add(PC);
       const addTrack = PC.addTrack, addTransceiver = PC.addTransceiver, getSenders = PC.getSenders, getTransceivers = PC.getTransceivers;
       const replaceTrack = TX.replaceTrack, senderTrack = Object.getOwnPropertyDescriptor(TX, 'track').get;
       const replaceHook = function (t) { const w = t && wrap(t); if (w !== t) senders.set(this, [t, replaceTrack]); else senders.delete(this); return replaceTrack.call(this, w); };
-      // The meeting app still sees its own track everywhere it looks.
+      // The app still sees its own track.
       const trackHook = { get() { const t = senderTrack.call(this); return (t && theirs.get(t)) || t; } };
       const protoReplace = override(TX, 'replaceTrack', { value: replaceHook, writable: true });
       const protoTrack = override(TX, 'track', trackHook);
-      // Where the shared sender code is locked, hook each sender as the call hands it out.
+      // Locked prototype: hook each sender instead.
       const hookSender = (snd) => {
         if (!snd || patched.has(snd)) return snd;
         patched.add(snd);
@@ -594,7 +566,7 @@
       let protoPC = true;
       for (const [k, f] of Object.entries(methods)) protoPC = override(PC, k, { value: f, writable: true }) && protoPC;
       if (!protoPC) {
-        // Locked: hook each call connection as it's created instead.
+        // Locked prototype: hook each connection instead.
         const Real = win.RTCPeerConnection;
         const Hooked = new Proxy(Real, {
           construct(T, args, nt) {
@@ -603,7 +575,6 @@
             return pc;
           },
         });
-        // Fully locked (Google Meet): take your video at the camera instead.
         if (!override(win, 'RTCPeerConnection', { value: Hooked, writable: true })) patchCamera(win);
       }
     }
@@ -619,7 +590,7 @@
       mark(win.RTCRtpReceiver && win.RTCRtpReceiver.prototype, 'track');
       mark(win.RTCTrackEvent && win.RTCTrackEvent.prototype, 'track');
     }
-    // If the meeting app draws your self-view with its own renderer, hand that renderer our copy.
+    // Apps that render the self-view themselves get our copy.
     if (win.MediaStreamTrackProcessor && !patched.has(win.MediaStreamTrackProcessor)) {
       const Real = win === window ? RealProcessor : win.MediaStreamTrackProcessor;
       const Proc = new Proxy(Real, {
@@ -634,15 +605,14 @@
       patched.add(Proc); patched.add(win.MediaStreamTrackProcessor);
       override(win, 'MediaStreamTrackProcessor', { value: Proc, writable: true });
     }
-    // Self-view: show our copy wherever the meeting app shows the video it is sending (or a duplicate of it).
+    // Self-view video elements show our copy.
     const proto = win.HTMLMediaElement && win.HTMLMediaElement.prototype;
     if (!proto || patched.has(proto)) return;
     patched.add(proto);
     const desc = Object.getOwnPropertyDescriptor(proto, 'srcObject');
-    const ourCopy = (st) => (isStream(st) && !st.__snapOrig ? copyFor(st.getVideoTracks()[0]) : null);
-    // If this can't be hooked, the regular check below still swaps the self-view.
+    const ourCopy = (st) => (isStream(st) && !st.__dustOutOriginal ? copyFor(st.getVideoTracks()[0]) : null);
     override(proto, 'srcObject', {
-      get() { const st = desc.get.call(this); return (st && st.__snapOrig) || st; },
+      get() { const st = desc.get.call(this); return (st && st.__dustOutOriginal) || st; },
       set(st) {
         let g = null;
         try { g = ourCopy(st); if (g) st = swapped(st, g); } catch (e) { failed(e); }
@@ -650,7 +620,6 @@
         if (g) queueMicrotask(() => { try { follow(win); } catch (e) { failed(e); } });
       },
     });
-    // A reloaded pop-out or frame is the same window with a fresh page: replace its old entry.
     const old = views.findIndex(([w]) => w === win);
     if (old >= 0) views.splice(old, 1);
     views.push([win, desc]);
@@ -661,10 +630,8 @@
     if (win !== window) { win.addEventListener('keydown', onKey, true); win.addEventListener('message', onHelper); }
   }
 
-  // Keep the card where your call is: move it into the pop-out while that window shows your
-  // video, and back here when it closes.
-  // Chrome strips all handlers from anything left in a window as it closes, so the card goes
-  // home as soon as the pop-out starts closing, and its handlers are re-attached on every move.
+  // The card follows the call into a pop-out. Chrome drops handlers on nodes in a closing
+  // window, so it comes home on pagehide and handlers are re-bound on every move.
   let cardWin = window;
   function moveCard(win) {
     cardWin = win;
@@ -674,7 +641,6 @@
   }
   const homing = new WeakSet();
   function follow(win) {
-    // Only into a pop-out; it comes home when the pop-out closes, not when this tab re-renders.
     if (!ui || win === window || win === cardWin || win.top !== win || !win.document.body) return;
     moveCard(win);
     if (!homing.has(win)) {
@@ -683,15 +649,13 @@
     }
   }
 
-  // If this tab goes away while a call runs elsewhere (e.g. in a pop-out), give each call its
-  // normal camera back instead of leaving it on a copy that's about to stop.
+  // Leaving this tab: give calls their own camera back.
   window.addEventListener('pagehide', () => {
     for (const [snd, [t, native]] of senders) { try { native.call(snd, t).catch(() => {}); } catch (_) {} }
   });
   const sameOrigin = (win) => { try { return !!win.document; } catch (_) { return false; } };
   patchWin(window);
-  // Pop-outs: keep checking each window the meeting app opens, since it may load a fresh page after opening.
-  // (If a site locks window.open, Dust Out just won't follow pop-outs there.)
+  // Patch pop-outs (polled, since they may load a new page).
   const realOpen = window.open;
   override(window, 'open', {
     writable: true,
@@ -708,28 +672,25 @@
       return win;
     },
   });
-  // Frames: the meeting app can run parts of a call inside same-origin frames.
+  // Same-origin frames, and self-views that appeared before hooking.
   setInterval(() => {
     for (let i = views.length - 1; i > 0; i--) { try { if (views[i][0].closed || !views[i][0].document) views.splice(i, 1); } catch (_) { views.splice(i, 1); } }
     for (const [win, desc] of views.slice()) {
       try { for (const f of win.document.querySelectorAll('iframe')) if (f.contentWindow && sameOrigin(f.contentWindow)) patchWin(f.contentWindow); } catch (_) {}
-      // Self-views set up before your camera was hooked: swap them now.
       try {
         for (const v of win.document.querySelectorAll('video')) {
           if (v === ui.preview) continue;
           const r = v.getBoundingClientRect();
           if (r.width < 40 || r.height < 40) continue; // hidden helper videos (e.g. the filter's input)
-          const st = desc.get.call(v), g = isStream(st) && !st.__snapOrig && copyFor(st.getVideoTracks()[0], true);
+          const st = desc.get.call(v), g = isStream(st) && !st.__dustOutOriginal && copyFor(st.getVideoTracks()[0], true);
           if (g) desc.set.call(v, swapped(st, g));
         }
       } catch (e) { failed(e); }
     }
   }, 1000);
 
-  // Snap detection. A finger snap is a sharp, bright crack: it jumps well above the room's
-  // background noise within ~10 ms, is mostly high-pitched, and dies away within ~20 ms.
-  // Speech rises slowly and is mostly low-pitched, so it doesn't pass. "Teach my snap"
-  // learns how loud and bright your snap is on your mic.
+  // Snap detection: a sharp, high-pitched spike that dies within ~20 ms. "Teach my snap"
+  // learns your snap's loudness and brightness.
   const TUNE_KEY = 'dustOut.tune';
   let tune = { jump: 18, bright: 0.35, level: -45 };
   try { const saved = JSON.parse(localStorage.getItem(TUNE_KEY)); if (saved && saved.level) tune = saved; } catch (_) {}
@@ -762,7 +723,7 @@
     let st = null, ac = null;
     const drop = () => { if (st) st.getTracks().forEach((t) => t.stop()); if (ac) ac.close().catch(() => {}); };
     try {
-      // Echo cancellation on: claps and snaps from other people through your speakers don't count.
+      // Echo cancellation ignores snaps from your speakers.
       st = await realGUM({ audio: { echoCancellation: true, noiseSuppression: false, autoGainControl: false } });
       ac = new AudioContext();
       if (run !== listenRun) return drop();
@@ -773,7 +734,7 @@
       hp.type = 'highpass'; hp.frequency.value = 2000;
       const both = ac.createChannelMerger(2);
       mic.connect(hp); hp.connect(both, 0, 0); mic.connect(both, 0, 1);
-      // Larger buffers so a busy meeting page doesn't drop audio; each is still checked in ~5 ms steps.
+      // Big buffers, analysed in ~5 ms steps.
       const sp = ac.createScriptProcessor(1024, 2, 1);
       both.connect(sp); sp.connect(ac.destination);
       let floor = null, ev = null, hold = 0;
@@ -815,8 +776,7 @@
     }
   }
 
-  // Small control card. Built with plain DOM calls so it works under the meeting app's strict page rules.
-  // Handlers use addEventListener: onclick-style handlers are dropped when the card moves windows.
+  // Control card: plain DOM (strict page rules), addEventListener (survives window moves).
   function say(m) { S.msg = m; paint(); }
   function paint() {
     if (!ui) return;
@@ -858,14 +818,12 @@
   thumbCanvas.width = 220;
   const thumb = el('div', 'display:none;margin-top:8px');
   thumb.append(el('div', 'color:#8a8a8a;font-size:12px;margin-bottom:4px', 'Saved empty room'), thumbCanvas);
-  // Exactly what the call is sending, whatever the meeting app shows in its own self-view.
   const previewBox = el('div', 'display:none;margin-top:8px');
   const preview = el('video', 'display:block;width:100%;border-radius:6px;background:#000');
   preview.muted = true; preview.autoplay = true; preview.playsInline = true;
   previewBox.append(el('div', 'color:#8a8a8a;font-size:12px;margin-bottom:4px', 'What others see'), preview);
   box.append(head, status, msg, previewBox, thumb, plateBtn, goBtn, earRow, teachBtn, handBtn, hint, diagBtn);
-  // The extension starts before the page has a body, and stays out of sight until your camera
-  // joins a call. The bookmark shows the card straight away.
+  // Extension: hidden until a camera joins a call.
   if (EXT) box.style.display = 'none';
   const mount = () => { if (!box.isConnected && cardWin === window) document.body.append(box); };
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
@@ -897,9 +855,7 @@
     if (!ear) { earBox.checked = true; await listen(true); }
     if (lesson && ear) say('Snap 3 times, a second apart.');
   }
-  // Hand gesture. Meeting sites don't allow outside code in their pages, so hand tracking runs
-  // elsewhere: inside the extension, or (bookmark) in a small helper window served from this
-  // computer by start-gesture.command. Either one messages this tab when you snap.
+  // Hand gesture runs outside the page: in the extension, or (bookmark) a localhost helper window.
   const HELPER = 'http://localhost:8777';
   let lastWave = 0, handOn = false;
   function openHand() {
@@ -923,7 +879,6 @@
     const d = e.data;
     if (!d) return;
     if (!EXT && e.origin === HELPER && d.dustOut === 'snap') return sawSnap();
-    // From the extension's bridge in this same tab.
     if (EXT && e.source === window && d.dustOutExt) {
       if (d.dustOutExt === 'snap') sawSnap();
       else if (d.dustOutExt === 'status') say(String(d.text || ''));
@@ -932,7 +887,6 @@
     }
   }
   window.addEventListener('message', onHelper);
-  // A short technical summary to paste back when something doesn't work, no console needed.
   function copyDiag() {
     const d = {
       state: S.state, cams: S.cams, hooks: S.calls, swaps: S.swaps || 0, plate: S.plate ? S.plate.width + 'x' + S.plate.height : null,
@@ -963,7 +917,6 @@
 
   window.__dustOut = { show: () => { mount(); box.style.display = ''; }, toggle, S };
   } catch (e) {
-    // Say exactly what stopped it, so it can be fixed.
     console.error('[dust-out] could not start:', e);
   }
 })();

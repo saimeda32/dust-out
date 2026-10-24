@@ -1,6 +1,5 @@
-// Finger-snap detector over MediaPipe hand landmarks (21 points, x/y in 0..1).
-// A snap: thumb and middle fingertip pressed together, then within ~half a second the middle
-// finger whips down to the palm. Blurred frames in between (hand not found) are fine.
+// Snap detector over MediaPipe hand landmarks: thumb and middle finger pinch, then the middle
+// finger drops to the palm within ~0.5 s.
 const d = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export function makeSnapDetector() {

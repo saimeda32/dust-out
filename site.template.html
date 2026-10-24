@@ -38,8 +38,9 @@
   .bar { display: flex; align-items: center; justify-content: space-between; padding: 20px 0; }
   .brand { display: flex; align-items: center; gap: 10px; font: 700 18px var(--display); text-decoration: none; }
   .brand img { width: 30px; height: 30px; border-radius: 8px; }
-  .bar a.gh { color: var(--light-muted); text-decoration: none; font-weight: 500; }
-  .bar a.gh:hover { color: var(--light); }
+  .nav { display: flex; gap: 22px; }
+  .nav a { color: var(--light-muted); text-decoration: none; font-weight: 500; }
+  .nav a:hover { color: var(--light); }
   .title { position: relative; margin: 28px 0 0; }
   .title h1 { margin: 0; font: 800 clamp(64px, 13vw, 168px)/0.92 var(--display); letter-spacing: -0.035em; color: var(--light); }
   .title canvas { position: absolute; inset: -40px -20px; width: calc(100% + 40px); height: calc(100% + 80px); pointer-events: none; }
@@ -75,12 +76,20 @@
   .steps span { color: var(--muted); font-size: 15.5px; }
   .done { margin: 30px 0 0; padding: 16px 20px; border-left: 4px solid var(--dust); background: var(--sheet); border-radius: 0 12px 12px 0; }
 
-  .bookmark { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; margin-top: 46px; padding: 28px; border: 2px dashed var(--line); border-radius: 22px; }
+  .pick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 8px; }
+  .pick a { display: block; padding: 18px 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--sheet); text-decoration: none; }
+  .pick a:hover { border-color: var(--dust); }
+  .pick a.rec { border: 2px solid var(--dust); }
+  .pick b { display: block; font: 700 20px var(--display); }
+  .pick span { display: block; color: var(--muted); font-size: 15px; margin: 2px 0 10px; }
+  .pick ul { margin: 0; padding-left: 18px; font-size: 15px; }
+  h3.way { font: 700 26px var(--display); margin: 52px 0 16px; scroll-margin-top: 20px; }
+  .bookmark { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; padding: 28px; border: 2px dashed var(--line); border-radius: 22px; }
   .chip { display: inline-flex; align-items: center; gap: 10px; padding: 12px 18px 12px 14px; border-radius: 12px; background: var(--ink); color: var(--paper); font-weight: 600; text-decoration: none; cursor: grab; }
   .chip img { width: 22px; height: 22px; border-radius: 5px; }
   .bookmark h3 { font: 700 21px var(--display); margin: 0 0 4px; }
   .bookmark p { margin: 4px 0; color: var(--muted); font-size: 15.5px; }
-  .console { margin-top: 28px; padding: 28px; border-radius: 22px; background: var(--sheet); border: 1px solid var(--line); }
+  .console { padding: 28px; border-radius: 22px; background: var(--sheet); border: 1px solid var(--line); }
   .console h3 { font: 700 21px var(--display); margin: 0 0 6px; }
   .console h4 { font: 700 17px var(--display); margin: 14px 0 6px; }
   .console > p { margin: 6px 0; color: var(--muted); }
@@ -124,11 +133,12 @@
     .gallery { grid-template-columns: 1fr; }
     .side { grid-template-columns: 1fr 1fr; grid-auto-rows: 120px; }
     .steps { grid-template-columns: 1fr 1fr; }
-    .use, .two, footer .wrap, .bookmark { grid-template-columns: 1fr; }
+    .use, .two, footer .wrap, .bookmark, .pick { grid-template-columns: 1fr; }
     .use img { max-width: 260px; }
   }
   @media (max-width: 520px) {
     .wrap { padding: 0 16px; }
+    .nav .wide { display: none; }
     .steps { grid-template-columns: 1fr; }
   }
 </style>
@@ -138,7 +148,9 @@
   <div class="wrap">
     <div class="bar">
       <a class="brand" href="#"><img src="__ASSETS__icon.png" alt="">Dust Out</a>
-      <a class="gh" href="https://github.com/saimeda32/dust-out">GitHub</a>
+      <nav class="nav" aria-label="Page">
+        <a href="#install">Install</a><a href="#use" class="wide">Use it</a><a href="#where" class="wide">Where it works</a><a href="#help" class="wide">Help</a><a href="https://github.com/saimeda32/dust-out">GitHub</a>
+      </nav>
     </div>
     <div class="title" id="title">
       <button type="button" aria-label="Play the dust effect on the title"><h1>Dust Out</h1></button>
@@ -147,7 +159,7 @@
 
     <div class="actions">
       <a class="cta" href="https://github.com/saimeda32/dust-out/releases/latest/download/dust-out-extension.zip">Download for Chrome</a>
-      <a class="alt" href="#bookmark">Can't install extensions? Use the bookmark (Teams only)</a>
+      <a class="alt" href="#install">Can't install extensions? See the other ways</a>
     </div>
     <ul class="facts">
       <li>Free and open source</li>
@@ -172,56 +184,68 @@
 
 <main class="wrap">
   <section id="install">
-    <h2>Install it in two minutes</h2>
-    <p class="intro">Dust Out isn't in the Chrome Web Store yet, so you add it yourself. It's four steps.</p>
+    <h2>Install</h2>
+    <p class="intro">Pick the way that fits your computer. Not in the Chrome Web Store yet, so you add it yourself.</p>
+    <div class="pick">
+      <a href="#extension" class="rec">
+        <b>Extension</b><span>Recommended for most people</span>
+        <ul><li>Teams and Google Meet</li><li>2 minutes, once</li></ul>
+      </a>
+      <a href="#bookmark">
+        <b>Bookmark</b><span>Extensions blocked, using Teams</span>
+        <ul><li>Teams only</li><li>Click before each call</li></ul>
+      </a>
+      <a href="#console">
+        <b>Console snippet</b><span>Extensions blocked, using Google Meet</span>
+        <ul><li>Teams and Google Meet</li><li>Run before each call</li></ul>
+      </a>
+    </div>
+
+    <h3 class="way" id="extension">Extension</h3>
     <ol class="steps">
       <li><b>Download</b><span><a href="https://github.com/saimeda32/dust-out/releases/latest/download/dust-out-extension.zip">dust-out-extension.zip</a>, then unzip it.</span></li>
       <li><b>Open extensions</b><span>Paste <code>chrome://extensions</code> into Chrome's address bar.</span></li>
       <li><b>Developer mode</b><span>Turn on the switch in the top right corner.</span></li>
       <li><b>Load unpacked</b><span>Click it and choose the <code>dust-out-extension</code> folder.</span></li>
     </ol>
-    <p class="done">That's it. Dust Out switches itself on in Teams and Google Meet. Pin it from the puzzle-piece menu if you want its button handy.</p>
+    <p class="done">Done. Reload any open meeting tabs. It turns itself on in Teams and Google Meet; for other sites, click its toolbar button and choose <b>Turn on for this site</b>.</p>
 
-    <div class="bookmark" id="bookmark">
+    <h3 class="way" id="bookmark">Bookmark</h3>
+    <div class="bookmark">
       <a class="chip" href="__BOOKMARKLET__" title="Drag me to your bookmarks bar"><img src="__ASSETS__icon.png" alt="">Dust Out (Teams only)</a>
       <div>
-        <h3>No extensions allowed? Use the bookmark on Teams.</h3>
-        <p class="warn"><b>The bookmark does not work on Google Meet.</b> Meet blocks bookmarks from running, so clicking it there does nothing. For Meet, install the extension, or if that's blocked too, <a href="#console">run it from the console</a>.</p>
-        <p>Show your bookmarks bar (<kbd>Cmd+Shift+B</kbd>, or <kbd>Ctrl+Shift+B</kbd> on Windows) and drag the button onto it. In your Teams meeting, click the bookmark on the screen before you join.</p>
+        <p class="warn"><b>Teams only.</b> Google Meet blocks bookmarks, so clicking it there does nothing. On Meet, use the extension or the console snippet.</p>
+        <p>Show your bookmarks bar (<kbd>Cmd+Shift+B</kbd>, or <kbd>Ctrl+Shift+B</kbd> on Windows) and drag the button onto it. In your Teams meeting, click it on the screen before you join.</p>
       </div>
     </div>
 
-    <div class="console" id="console">
-      <h3>Google Meet, and extensions are blocked too?</h3>
-      <p>Run Dust Out from Chrome's developer console instead. Meet can't block that. You save it once as a console snippet, then start it with a shortcut before each call.</p>
+    <h3 class="way" id="console">Console snippet</h3>
+    <div class="console">
+      <p>Chrome's developer console can run Dust Out where extensions are blocked, including on Google Meet. Save it once, then start it before each call.</p>
       <p><button type="button" class="chip" id="copy-code">Copy the code</button> <span id="copied" class="note" role="status"></span></p>
       <div class="two">
         <div>
           <h4>Once</h4>
           <ol>
-            <li>Click <b>Copy the code</b> above.</li>
-            <li>Press <kbd>Cmd+Option+J</kbd> (<kbd>Ctrl+Shift+J</kbd> on Windows) to open the console.</li>
-            <li>Press <kbd>Cmd+Shift+P</kbd> (<kbd>Ctrl+Shift+P</kbd>), type <code>snippet</code> and choose <b>Create new snippet</b>.</li>
-            <li>Right-click the new snippet's name, choose <b>Rename</b> and call it <b>Dust Out</b>.</li>
-            <li>Paste the code into it and press <kbd>Cmd+S</kbd>. If Chrome blocks the paste, type <code>allow pasting</code>, press Enter, and paste again.</li>
+            <li>Click <b>Copy the code</b>.</li>
+            <li>Press <kbd>Cmd+Option+J</kbd> (<kbd>Ctrl+Shift+J</kbd> on Windows), then <kbd>Cmd+Shift+P</kbd>. Type <code>snippet</code> and choose <b>Create new snippet</b>.</li>
+            <li>Right-click it, <b>Rename</b> it to <b>Dust Out</b>, paste the code and press <kbd>Cmd+S</kbd>. If Chrome blocks the paste, type <code>allow pasting</code> first.</li>
           </ol>
         </div>
         <div>
           <h4>Each call</h4>
           <ol>
-            <li>Open the Meet link and stop on the screen before you join.</li>
-            <li>Press <kbd>Cmd+Option+J</kbd>, click inside the developer tools, then press <kbd>Cmd+P</kbd>. In the search box that opens at the top of the developer tools (not the console line), type <code>!Dust Out</code> and press Enter. The card appears.</li>
-            <li>Or open the snippet in the <b>Sources</b> tab and press <kbd>Cmd+Enter</kbd>.</li>
-            <li>Close the console and join. Already in the call? Turn your camera off and on once.</li>
+            <li>Open the meeting and stop on the screen before you join.</li>
+            <li>Press <kbd>Cmd+Option+J</kbd>, open the <b>Dust Out</b> snippet in the <b>Sources</b> tab and press <kbd>Cmd+Enter</kbd>. Or paste the code into the <b>Console</b> and press Enter.</li>
+            <li>The card appears. Join. On Meet, turn your camera off and on once if the card asks.</li>
           </ol>
         </div>
       </div>
-      <p class="note">No snippet option? Your company may have limited the developer tools. You can still paste the code straight into the <b>Console</b> tab on the screen before you join, each time.</p>
-      <p class="note">This runs only in that tab and stops when you reload. It's still code your IT team hasn't approved, so use your judgement on a work laptop.</p>
+      <p class="note">It runs only in that tab until you reload. It's still code your IT team hasn't approved, so use your judgement on a work laptop.</p>
     </div>
   </section>
 
-  <section>
+  <section id="use">
     <h2>Use it in a call</h2>
     <p class="intro">Open the meeting in Chrome, not the desktop app, and join with your camera on. The Dust Out card appears at the bottom left.</p>
     <div class="use">
@@ -252,7 +276,7 @@
     </div>
   </section>
 
-  <section>
+  <section id="where">
     <h2>Where it works</h2>
     <p class="intro">Any meeting you join in Chrome that sends video the usual browser way.</p>
     <table>
@@ -265,13 +289,13 @@
     </table>
   </section>
 
-  <section>
+  <section id="help">
     <h2>Something's not working?</h2>
     <p class="intro">The card has a <b>Copy diagnostics</b> link. If none of these help, <a href="https://github.com/saimeda32/dust-out/issues">open an issue</a> and paste what it copies.</p>
     <details><summary>The card never appears</summary>
       <p>Make sure the meeting is open in Chrome, not the desktop app, and your camera is on. With the extension, the card shows once your camera joins a call, or click the toolbar button and choose <b>Show the card</b>. With the bookmark, click it before joining.</p></details>
     <details><summary>I clicked the bookmark on Google Meet and nothing happened</summary>
-      <p>That's expected: Google Meet blocks bookmarks from running any code, so the bookmark can't work there. Install the extension instead (four steps at the top of this page), then reload the Meet tab or rejoin. If extensions are blocked on your computer, <a href="#console">run it from the console</a>.</p></details>
+      <p>That's expected: Google Meet blocks bookmarks from running any code, so the bookmark can't work there. Use the <a href="#extension">extension</a>, or the <a href="#console">console snippet</a> if extensions are blocked.</p></details>
     <details><summary>I snap and nothing happens</summary>
       <p>Save the empty room first, then try <kbd>Option+Shift+V</kbd>. If the shortcut works but snapping doesn't, run <b>Teach my snap</b> again in a quiet moment.</p></details>
     <details><summary>The card shows the dust, but my own video doesn't</summary>
@@ -297,7 +321,7 @@
 </footer>
 
 <script>
-// "Copy the code": puts Dust Out's code on the clipboard for a console snippet.
+// Copy the code for the console snippet.
 document.getElementById('copy-code').addEventListener('click', async () => {
   const say = (t) => { document.getElementById('copied').textContent = t; };
   try {
@@ -311,8 +335,7 @@ document.getElementById('copy-code').addEventListener('click', async () => {
 </script>
 <script src="__ASSETS__character.js"></script>
 <script>
-// Alex and Sam watch your tile: they nod along, then look shocked when you snap and crumble,
-// and smile when you come back. Timed to the demo video using the moments recorded with it.
+// Alex and Sam react to the demo, timed with docs/demo-timeline.json.
 (() => {
   const T = __TIMELINE__;
   const video = document.querySelector('.tile.main video');
@@ -332,7 +355,7 @@ document.getElementById('copy-code').addEventListener('click', async () => {
       const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
       if (c.canvas.width !== w || c.canvas.height !== h) { c.canvas.width = w; c.canvas.height = h; }
       const x = c.canvas.getContext('2d');
-      // Frame the face: a window 620 tall around the head, as wide as the tile allows.
+      // Crop to the face.
       const scale = h / 620;
       x.setTransform(scale, 0, 0, scale, w / 2 - 640 * scale, -90 * scale);
       c.who.draw(x, now, { mood: still ? 'listen' : mood(t, c.lag) });
@@ -342,7 +365,7 @@ document.getElementById('copy-code').addEventListener('click', async () => {
   requestAnimationFrame(paint);
 })();
 
-// The title crumbles into dust and reforms: once when the page opens, and whenever it's clicked.
+// The title crumbles and reforms on load and on click.
 (() => {
   const box = document.getElementById('title'), h1 = box.querySelector('h1');
   if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -377,7 +400,7 @@ document.getElementById('copy-code').addEventListener('click', async () => {
   function frame(now) {
     const t = (now - start) / 1000, CRUMBLE = 3.2, HOLD = 0.5, BACK = 1.6;
     cx.clearRect(0, 0, cv.width, cv.height);
-    // Leaving, a pause with nothing there, then the dust rewinds faster than it left.
+    // Crumble, pause, then rewind faster.
     const tt = t < CRUMBLE ? t : t < CRUMBLE + HOLD ? CRUMBLE : CRUMBLE * (1 - smooth((t - CRUMBLE - HOLD) / BACK));
     for (const p of parts) {
       const k = (tt - p.delay) / p.life;

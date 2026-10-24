@@ -1,2 +1,2 @@
-// Tells dust-out.js it was loaded by the extension (before the page), not by the bookmark.
+// Marks that dust-out.js was loaded by the extension.
 window.__dustOutExt = true;

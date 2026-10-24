@@ -1,5 +1,5 @@
 // Full check of the built bookmark against a Teams-like page. Prints PASS/FAIL per check.
-// Checks the bookmark version (the exact code on bookmarklet/install.html) against a page that
+// Checks the bookmark version (the exact code behind the website button) against a page that
 // behaves like Teams. Prints PASS/FAIL per check. Run: node build.mjs && node test/suite.mjs
 import { chromium } from 'playwright-core';
 import { readFileSync } from 'node:fs';
@@ -7,7 +7,7 @@ import { serve } from './serve.mjs';
 
 const site = await serve(8765);
 const helperSite = await serve(8777, new URL('../bookmarklet/', import.meta.url).pathname);
-const html = readFileSync(new URL('../bookmarklet/install.html', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../docs/index.html', import.meta.url), 'utf8');
 const href = html.match(/class="[^"]*\b(?:drag|chip)\b[^"]*" href="([^"]+)"/)[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const code = decodeURIComponent(href.slice('javascript:'.length));
 
@@ -32,7 +32,7 @@ const saveRoom = async (personInFrame = false) => {
   await p.waitForTimeout(400);
 };
 
-// A. Pre-join: click the bookmark (exact code from install.html).
+// A. Pre-join: click the bookmark (exact code from the website).
 await p.evaluate((c) => (0, eval)(c), code);
 await p.waitForTimeout(300);
 check('A1 bookmark shows the card', await p.evaluate(() => document.body.innerText.includes('Dust Out')));
@@ -214,7 +214,7 @@ check('I5 loud talking does not trigger it', !(await fires('speech', 0.95)));
 check('I6 typing clicks do not trigger it', !(await fires('click', 0.05)));
 
 // J. Hand-gesture messages: only the helper's address is trusted.
-await p.evaluate(() => { __dustOut.S.msg = ''; window.postMessage({ snapVanish: 'snap' }, '*'); });
+await p.evaluate(() => { __dustOut.S.msg = ''; window.postMessage({ dustOut: 'snap' }, '*'); });
 await p.waitForTimeout(300);
 check('J1 snap messages from other pages are ignored', !/Saw a snap/.test((await S()).msg));
 const [helper] = await Promise.all([ctx.waitForEvent('page'), p.getByText('Hand gesture').click()]);
