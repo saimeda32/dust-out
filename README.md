@@ -17,7 +17,9 @@ A free Chrome extension for Microsoft Teams and Google Meet. No AI, no accounts,
 
 Done. It turns itself on in Teams and Google Meet.
 
-> Can't install extensions (for example on a work laptop)? Use the **bookmark** instead. It has to be dragged from a web page, so get it from the **[install page](https://saimeda32.github.io/dust-out/#install)**. The bookmark works on Teams; Google Meet blocks bookmarks, so Meet needs the extension.
+> Can't install extensions (for example on a work laptop)? Use the **bookmark** instead. It has to be dragged from a web page, so get it from the **[install page](https://saimeda32.github.io/dust-out/#bookmark)**.
+>
+> **The bookmark works on Teams only. It does not work on Google Meet:** Meet blocks bookmarks from running, so clicking it there does nothing. For Meet, install the extension.
 
 ## Use it in a call
 
@@ -36,16 +38,17 @@ To snap for real instead of using the shortcut: tick **Listen for a finger snap*
 
 ## Where it works
 
-| In Chrome | |
-|---|---|
-| Microsoft Teams | Works |
-| Google Meet | Should work with the extension; not tried in a real call yet |
-| Webex, Jitsi, Whereby, Slack huddles, other browser meetings | Click the Dust Out toolbar button on the site, choose **Turn on for this site**, reload before joining. Untested |
-| Zoom in the browser | Not supported yet |
-| Desktop apps | No |
+| In Chrome | Extension | Bookmark |
+|---|---|---|
+| Microsoft Teams | Works | Works |
+| Google Meet | Should work; not tried in a real call yet | **Doesn't work.** Meet blocks bookmarks |
+| Webex, Jitsi, Whereby, Slack huddles, other browser meetings | Toolbar button, **Turn on for this site**, reload before joining. Untested | Might work, depending on the site. Untested |
+| Zoom in the browser | Not supported yet | Not supported yet |
+| Desktop apps | No, Chrome only | No, Chrome only |
 
 ## Something's not working?
 
+- **Bookmark does nothing on Google Meet:** expected. Meet blocks bookmarks. Install the extension, then reload the Meet tab.
 - **No card:** the meeting must be open in Chrome (not the desktop app) with your camera on. With the extension, you can also click its toolbar button and choose **Show the card**.
 - **Snap does nothing:** save the empty room first, then try **Option+Shift+V**.
 - **"Couldn't find you":** you were in the saved empty room, or the camera moved. Save it again.

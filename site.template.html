@@ -80,6 +80,7 @@
   .chip img { width: 22px; height: 22px; border-radius: 5px; }
   .bookmark h3 { font: 700 21px var(--display); margin: 0 0 4px; }
   .bookmark p { margin: 4px 0; color: var(--muted); font-size: 15.5px; }
+  .bookmark p.warn { color: var(--ink); padding: 8px 12px; margin: 8px 0; border-radius: 10px; background: color-mix(in srgb, var(--dust) 22%, transparent); }
 
   .use { display: grid; grid-template-columns: 260px 1fr; gap: 48px; align-items: start; }
   .use img { width: 100%; border-radius: 18px; box-shadow: 0 24px 60px -24px rgba(26, 29, 43, 0.45); }
@@ -95,7 +96,7 @@
   table { width: 100%; border-collapse: collapse; font-size: 16px; }
   th { text-align: left; font: 600 15px var(--body); color: var(--muted); padding: 0 12px 10px 0; }
   td { padding: 14px 12px 14px 0; border-top: 1px solid var(--line); vertical-align: top; }
-  td:first-child { font-weight: 600; width: 38%; }
+  td:first-child { font-weight: 600; width: 28%; }
   .ok, .maybe, .no { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
   .ok { background: #3fa36b; } .maybe { background: var(--dust); } .no { background: #b7bbcc; }
 
@@ -138,7 +139,7 @@
 
     <div class="actions">
       <a class="cta" href="https://github.com/saimeda32/dust-out/releases/latest/download/dust-out-extension.zip">Download for Chrome</a>
-      <a class="alt" href="#bookmark">Can't install extensions? Use the bookmark</a>
+      <a class="alt" href="#bookmark">Can't install extensions? Use the bookmark (Teams only)</a>
     </div>
     <ul class="facts">
       <li>Free and open source</li>
@@ -174,11 +175,11 @@
     <p class="done">That's it. Dust Out switches itself on in Teams and Google Meet. Pin it from the puzzle-piece menu if you want its button handy.</p>
 
     <div class="bookmark" id="bookmark">
-      <a class="chip" href="__BOOKMARKLET__" title="Drag me to your bookmarks bar"><img src="__ASSETS__icon.png" alt="">Dust Out</a>
+      <a class="chip" href="__BOOKMARKLET__" title="Drag me to your bookmarks bar"><img src="__ASSETS__icon.png" alt="">Dust Out (Teams only)</a>
       <div>
-        <h3>No extensions allowed? Use the bookmark.</h3>
-        <p>Show your bookmarks bar (<kbd>Cmd+Shift+B</kbd>, or <kbd>Ctrl+Shift+B</kbd> on Windows) and drag the button onto it. In your meeting, click the bookmark on the screen before you join.</p>
-        <p>It works on Teams. Google Meet blocks bookmarks from running, so Meet needs the extension.</p>
+        <h3>No extensions allowed? Use the bookmark on Teams.</h3>
+        <p class="warn"><b>The bookmark does not work on Google Meet.</b> Meet blocks bookmarks from running, so clicking it there does nothing. For Meet, install the extension.</p>
+        <p>Show your bookmarks bar (<kbd>Cmd+Shift+B</kbd>, or <kbd>Ctrl+Shift+B</kbd> on Windows) and drag the button onto it. In your Teams meeting, click the bookmark on the screen before you join.</p>
       </div>
     </div>
   </section>
@@ -218,12 +219,12 @@
     <h2>Where it works</h2>
     <p class="intro">Any meeting you join in Chrome that sends video the usual browser way.</p>
     <table>
-      <tr><th>Meeting app</th><th>Status</th></tr>
-      <tr><td>Microsoft Teams</td><td><span class="ok"></span>Works</td></tr>
-      <tr><td>Google Meet</td><td><span class="maybe"></span>Should work with the extension. Not tried in a real call yet, so tell us how it goes.</td></tr>
-      <tr><td>Webex, Jitsi, Whereby, Slack huddles and others</td><td><span class="maybe"></span>Click the Dust Out toolbar button on the site and choose <b>Turn on for this site</b>, then reload before joining.</td></tr>
-      <tr><td>Zoom in the browser</td><td><span class="no"></span>Not supported yet</td></tr>
-      <tr><td>Desktop apps</td><td><span class="no"></span>Chrome only</td></tr>
+      <tr><th>Meeting app</th><th>Extension</th><th>Bookmark</th></tr>
+      <tr><td>Microsoft Teams</td><td><span class="ok"></span>Works</td><td><span class="ok"></span>Works</td></tr>
+      <tr><td>Google Meet</td><td><span class="maybe"></span>Should work. Not tried in a real call yet, so tell us how it goes.</td><td><span class="no"></span>Doesn't work. Meet blocks bookmarks.</td></tr>
+      <tr><td>Webex, Jitsi, Whereby, Slack huddles and others</td><td><span class="maybe"></span>Click the Dust Out toolbar button on the site and choose <b>Turn on for this site</b>, then reload before joining. Untested.</td><td><span class="maybe"></span>Might work, depending on the site's rules. Untested.</td></tr>
+      <tr><td>Zoom in the browser</td><td><span class="no"></span>Not supported yet</td><td><span class="no"></span>Not supported yet</td></tr>
+      <tr><td>Desktop apps</td><td colspan="2"><span class="no"></span>No. Dust Out runs in Chrome only.</td></tr>
     </table>
   </section>
 
@@ -232,6 +233,8 @@
     <p class="intro">The card has a <b>Copy diagnostics</b> link. If none of these help, <a href="https://github.com/saimeda32/dust-out/issues">open an issue</a> and paste what it copies.</p>
     <details><summary>The card never appears</summary>
       <p>Make sure the meeting is open in Chrome, not the desktop app, and your camera is on. With the extension, the card shows once your camera joins a call, or click the toolbar button and choose <b>Show the card</b>. With the bookmark, click it before joining.</p></details>
+    <details><summary>I clicked the bookmark on Google Meet and nothing happened</summary>
+      <p>That's expected: Google Meet blocks bookmarks from running any code, so the bookmark can't work there. Install the extension instead (four steps at the top of this page), then reload the Meet tab or rejoin.</p></details>
     <details><summary>I snap and nothing happens</summary>
       <p>Save the empty room first, then try <kbd>Option+Shift+V</kbd>. If the shortcut works but snapping doesn't, run <b>Teach my snap</b> again in a quiet moment.</p></details>
     <details><summary>The card shows the dust, but my own video doesn't</summary>
@@ -239,7 +242,7 @@
     <details><summary>It says "Couldn't find you"</summary>
       <p>The saved empty room had you in it, or the camera moved since. Save it again and step fully out of view.</p></details>
     <details><summary>My work laptop won't let me turn on Developer mode</summary>
-      <p>Use the bookmark instead. It works on Teams.</p></details>
+      <p>Use the bookmark instead. It works on Teams, but not on Google Meet.</p></details>
   </section>
 </main>
 
