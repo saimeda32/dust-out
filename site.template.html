@@ -80,6 +80,14 @@
   .chip img { width: 22px; height: 22px; border-radius: 5px; }
   .bookmark h3 { font: 700 21px var(--display); margin: 0 0 4px; }
   .bookmark p { margin: 4px 0; color: var(--muted); font-size: 15.5px; }
+  .console { margin-top: 28px; padding: 28px; border-radius: 22px; background: var(--sheet); border: 1px solid var(--line); }
+  .console h3 { font: 700 21px var(--display); margin: 0 0 6px; }
+  .console h4 { font: 700 17px var(--display); margin: 14px 0 6px; }
+  .console > p { margin: 6px 0; color: var(--muted); }
+  .console ol { margin: 0; padding-left: 20px; color: var(--ink); font-size: 15.5px; }
+  .console li { margin: 0 0 8px; }
+  .console .two { gap: 32px; }
+  button.chip { border: 0; font: 600 16px var(--body); cursor: pointer; }
   .bookmark p.warn { color: var(--ink); padding: 8px 12px; margin: 8px 0; border-radius: 10px; background: color-mix(in srgb, var(--dust) 22%, transparent); }
 
   .use { display: grid; grid-template-columns: 260px 1fr; gap: 48px; align-items: start; }
@@ -178,9 +186,35 @@
       <a class="chip" href="__BOOKMARKLET__" title="Drag me to your bookmarks bar"><img src="__ASSETS__icon.png" alt="">Dust Out (Teams only)</a>
       <div>
         <h3>No extensions allowed? Use the bookmark on Teams.</h3>
-        <p class="warn"><b>The bookmark does not work on Google Meet.</b> Meet blocks bookmarks from running, so clicking it there does nothing. For Meet, install the extension.</p>
+        <p class="warn"><b>The bookmark does not work on Google Meet.</b> Meet blocks bookmarks from running, so clicking it there does nothing. For Meet, install the extension, or if that's blocked too, <a href="#console">run it from the console</a>.</p>
         <p>Show your bookmarks bar (<kbd>Cmd+Shift+B</kbd>, or <kbd>Ctrl+Shift+B</kbd> on Windows) and drag the button onto it. In your Teams meeting, click the bookmark on the screen before you join.</p>
       </div>
+    </div>
+
+    <div class="console" id="console">
+      <h3>Google Meet, and extensions are blocked too?</h3>
+      <p>Run Dust Out from Chrome's developer console instead. Meet can't block that. You save it once as a console snippet, then start it with a shortcut before each call.</p>
+      <p><button type="button" class="chip" id="copy-code">Copy the code</button> <span id="copied" class="note" role="status"></span></p>
+      <div class="two">
+        <div>
+          <h4>Once</h4>
+          <ol>
+            <li>Click <b>Copy the code</b> above.</li>
+            <li>Press <kbd>Cmd+Option+J</kbd> (<kbd>Ctrl+Shift+J</kbd> on Windows) to open the console, then switch to the <b>Sources</b> tab.</li>
+            <li>In the left panel open <b>Snippets</b> (it may be behind <b>&raquo;</b>), click <b>New snippet</b> and name it <b>Dust Out</b>.</li>
+            <li>Paste the code and press <kbd>Cmd+S</kbd>. If Chrome blocks the paste, type <code>allow pasting</code>, press Enter, and paste again.</li>
+          </ol>
+        </div>
+        <div>
+          <h4>Each call</h4>
+          <ol>
+            <li>Open the Meet link and stop on the screen before you join.</li>
+            <li>Press <kbd>Cmd+Option+J</kbd>, then <kbd>Cmd+P</kbd>, type <code>!Dust Out</code> and press Enter. The card appears.</li>
+            <li>Close the console and join. Already in the call? Turn your camera off and on once.</li>
+          </ol>
+        </div>
+      </div>
+      <p class="note">This runs only in that tab and stops when you reload. It's still code your IT team hasn't approved, so use your judgement on a work laptop.</p>
     </div>
   </section>
 
@@ -234,7 +268,7 @@
     <details><summary>The card never appears</summary>
       <p>Make sure the meeting is open in Chrome, not the desktop app, and your camera is on. With the extension, the card shows once your camera joins a call, or click the toolbar button and choose <b>Show the card</b>. With the bookmark, click it before joining.</p></details>
     <details><summary>I clicked the bookmark on Google Meet and nothing happened</summary>
-      <p>That's expected: Google Meet blocks bookmarks from running any code, so the bookmark can't work there. Install the extension instead (four steps at the top of this page), then reload the Meet tab or rejoin.</p></details>
+      <p>That's expected: Google Meet blocks bookmarks from running any code, so the bookmark can't work there. Install the extension instead (four steps at the top of this page), then reload the Meet tab or rejoin. If extensions are blocked on your computer, <a href="#console">run it from the console</a>.</p></details>
     <details><summary>I snap and nothing happens</summary>
       <p>Save the empty room first, then try <kbd>Option+Shift+V</kbd>. If the shortcut works but snapping doesn't, run <b>Teach my snap</b> again in a quiet moment.</p></details>
     <details><summary>The card shows the dust, but my own video doesn't</summary>
@@ -242,7 +276,7 @@
     <details><summary>It says "Couldn't find you"</summary>
       <p>The saved empty room had you in it, or the camera moved since. Save it again and step fully out of view.</p></details>
     <details><summary>My work laptop won't let me turn on Developer mode</summary>
-      <p>Use the bookmark instead. It works on Teams, but not on Google Meet.</p></details>
+      <p>On Teams, use the bookmark. On Google Meet, <a href="#console">run it from the console</a>.</p></details>
   </section>
 </main>
 
@@ -259,6 +293,19 @@
   </div>
 </footer>
 
+<script>
+// "Copy the code": puts Dust Out's code on the clipboard for a console snippet.
+document.getElementById('copy-code').addEventListener('click', async () => {
+  const say = (t) => { document.getElementById('copied').textContent = t; };
+  try {
+    const code = await (await fetch('__ASSETS__dust-out.js')).text();
+    await navigator.clipboard.writeText(code);
+    say('Copied. Now paste it into a new snippet.');
+  } catch (_) {
+    say('Couldn\'t copy here. Open the code on GitHub instead: github.com/saimeda32/dust-out/blob/main/src/dust-out.js');
+  }
+});
+</script>
 <script src="__ASSETS__character.js"></script>
 <script>
 // Alex and Sam watch your tile: they nod along, then look shocked when you snap and crumble,

@@ -20,6 +20,8 @@ Done. It turns itself on in Teams and Google Meet.
 > Can't install extensions (for example on a work laptop)? Use the **bookmark** instead. It has to be dragged from a web page, so get it from the **[install page](https://saimeda32.github.io/dust-out/#bookmark)**.
 >
 > **The bookmark works on Teams only. It does not work on Google Meet:** Meet blocks bookmarks from running, so clicking it there does nothing. For Meet, install the extension.
+>
+> **Google Meet with extensions blocked too?** Run it from Chrome's developer console: save the code once as a console snippet, then start it before each call. Steps and a copy button are on the [install page](https://saimeda32.github.io/dust-out/#console).
 
 ## Use it in a call
 

@@ -260,6 +260,27 @@ await p.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide'))
 await p.waitForTimeout(300);
 check('R3 closing the tab gives the call its normal camera back', await p.evaluate(() => nativeSenderTrack.call(sender) === t2));
 
+// M. Google Meet on a locked-down laptop: the code pasted into the console (or run as a saved
+// snippet) on a page with Meet's script rules, with no extension. Console code skips the
+// page's script rules, which test code here does too.
+const mctx = await b.newContext();
+await mctx.route('https://meet.google.com/dust-test/**', (r) => r.fulfill({
+  contentType: 'text/html',
+  headers: { 'content-security-policy': "script-src 'nonce-dusttest' 'strict-dynamic'; require-trusted-types-for 'script'" },
+  body: readFileSync(new URL('./test.html', import.meta.url), 'utf8').replace(/<script>/g, '<script nonce="dusttest">'),
+}));
+const mp = await mctx.newPage();
+mp.on('pageerror', (e) => errors.push(e.message));
+await mp.goto('https://meet.google.com/dust-test/test.html');
+await mp.waitForTimeout(400);
+const snippet = readFileSync(new URL('../docs/dust-out.js', import.meta.url), 'utf8');
+await mp.evaluate((c) => (0, eval)(c), snippet);
+check('M1 pasted code runs under Meet-style script rules', await mp.evaluate(() => !!window.__dustOut && document.body.innerText.includes('Dust Out')));
+await mp.evaluate(() => join());
+await mp.waitForTimeout(1500);
+check('M2 and hooks the outgoing video there', await mp.evaluate(() => __dustOut.S.cams === 1));
+await mctx.close();
+
 check('Z1 no errors from Snap Vanish or the page', errors.length === 0, errors.slice(0, 3).join(' | '));
 const failed = results.filter((r) => !r[0]);
 console.log('\n' + (results.length - failed.length) + '/' + results.length + ' passed');
