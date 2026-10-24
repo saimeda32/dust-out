@@ -25,11 +25,7 @@ await p.evaluate(() => {
   window.frames_ = [];
   const v = document.getElementById('remote'), c = document.createElement('canvas');
   c.width = 960; c.height = 540;
-  window.states_ = [];
-  window.rec = setInterval(() => {
-    c.getContext('2d').drawImage(v, 0, 0, 960, 540); frames_.push(c.toDataURL('image/png'));
-    states_.push([__dustOut.S.state, !!window.snapAt]);
-  }, 100);
+  window.rec = setInterval(() => { c.getContext('2d').drawImage(v, 0, 0, 960, 540); frames_.push(c.toDataURL('image/png')); }, 100);
 });
 await p.waitForTimeout(1300);                                 // talking
 await p.evaluate(() => { window.snapAt = performance.now(); }); // raises a hand and snaps
@@ -43,18 +39,9 @@ await p.waitForTimeout(500);
 await p.evaluate(() => __dustOut.toggle());                  // dust rewinds
 await p.waitForTimeout(4300);
 const data = await p.evaluate(() => { clearInterval(rec); return frames_; });
-// When each moment happens in the video (seconds), so the website's other participants can react.
-const states = await p.evaluate(() => states_);
-const at = (test) => +(states.findIndex(test) / 10).toFixed(1);
-const timeline = {
-  snap: at(([, snapping]) => snapping),
-  vanish: at(([s]) => s === 'vanishing'),
-  gone: at(([s]) => s === 'gone'),
-  back: at(([s]) => s === 'returning'),
-  live: +(states.findLastIndex(([s]) => s === 'returning') / 10 + 0.1).toFixed(1),
-  duration: +(states.length / 10).toFixed(1),
-};
-writeFileSync(new URL('../docs/demo-timeline.json', import.meta.url), JSON.stringify(timeline) + '\n');
+// When the person visibly crumbles, is gone, returns and is back, so the site's cast can react.
+const timeline = execFileSync('python3', [new URL('./timeline.py', import.meta.url).pathname, out, '0.1']).toString().trim();
+writeFileSync(new URL('../docs/demo-timeline.json', import.meta.url), timeline + '\n');
 console.log('timeline', timeline);
 const shots = data.map((d, i) => { const f = out + 'f' + String(i).padStart(3, '0') + '.png'; writeFileSync(f, Buffer.from(d.split(',')[1], 'base64')); return f; });
 await b.close(); site.close();
