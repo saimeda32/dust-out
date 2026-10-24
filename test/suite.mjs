@@ -290,6 +290,23 @@ for (const lock of ['prevent', 'freeze']) {
   await mctx.close();
 }
 
+// T. "Come back after" on the card.
+await p.bringToFront();
+check('T1 card offers "Come back after", 1 minute by default', await p.evaluate(() => { const sel = document.querySelector('select'); return !!sel && sel.value === '60' && [...sel.options].map((o) => o.text).join('|') === '30 seconds|1 minute|2 minutes|5 minutes|When I snap'; }));
+await p.selectOption('select', '0');
+await p.keyboard.press('Alt+Shift+KeyV');
+await waitState('gone', 9000);
+await p.evaluate(() => { __dustOut.S.t0 -= 600; }); // pretend 10 minutes passed
+await p.waitForTimeout(1200);
+check('T2 "When I snap" stays gone and says so', (await S()).state === 'gone' && await p.evaluate(() => document.body.innerText.includes('Snap to come back')));
+await p.selectOption('select', '30');
+await p.evaluate(() => { __dustOut.S.t0 = performance.now() / 1000 - 29.5; }); // 29.5 s into being gone
+await p.waitForTimeout(1500);
+check('T3 a timed choice brings you back when it runs out', ['returning', 'live'].includes((await S()).state), (await S()).state);
+await waitState('live', 6000);
+check('T4 the choice is remembered for this site', await p.evaluate(() => localStorage.getItem('dustOut.away') === '30'));
+await p.selectOption('select', '60');
+
 check('Z1 no errors from Dust Out or the page', errors.length === 0, errors.slice(0, 3).join(' | '));
 const failed = results.filter((r) => !r[0]);
 console.log('\n' + (results.length - failed.length) + '/' + results.length + ' passed');

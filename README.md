@@ -62,7 +62,7 @@ It runs only in that tab until you reload. It's still code your IT team hasn't a
 1. Open the meeting **in Chrome** with your camera on. The Dust Out card appears at the bottom left.
 2. Click **Save empty room** and step out of view for 5 seconds. Check the saved picture has no one in it.
 3. **Snap**, or press **Option+Shift+V** (Alt+Shift+V on Windows). Stay seated for about 3 seconds while you crumble.
-4. Leave. Everyone sees the empty room. Within a minute the dust flies back, or snap again to return sooner.
+4. Leave. Everyone sees the empty room. The dust flies back after the time you pick under **Come back after** on the card (30 seconds to 5 minutes, or **When I snap**), or snap again to return sooner.
 
 **What others see** on the card is exactly what your call sends.
 

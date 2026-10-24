@@ -11,7 +11,7 @@
 
   const CRUMBLE = 6.2;   // seconds the dust animation takes
   const SPREAD = 2.8;    // seconds for the crumble to spread across your whole body
-  const AWAY = 60;       // seconds before you come back on your own
+  const AWAY_KEY = 'dustOut.away'; // seconds gone before coming back on your own; 0 = only on a snap
   const SNAP_LAG = 0.35; // let people see the snap before the dust starts
   const RETURN = 3.2;    // seconds to come back: the dust rewinds faster than it left
 
@@ -20,6 +20,8 @@
   const realGUM = md.getUserMedia.bind(md);
   const now = () => performance.now() / 1000;
 
+  let away = 60;
+  try { const v = localStorage.getItem(AWAY_KEY); if (v !== null && +v >= 0) away = +v; } catch (_) {}
   const S = { state: 'live', t0: 0, anim: 0, armAt: 0, plate: null, plateVer: 0, wantPlate: false, cams: 0, calls: 0, msg: '' };
 
   function go(state) {
@@ -41,7 +43,7 @@
     if (S.armAt && now() - S.armAt > 2) S.armAt = 0;
     if (S.armAt && now() >= S.armAt) { S.armAt = 0; if (S.state === 'live') go('vanishing'); }
     else if (S.state === 'vanishing' && t >= CRUMBLE) go('gone');
-    else if (S.state === 'gone' && t >= AWAY) go('returning');
+    else if (S.state === 'gone' && away && t >= away) go('returning');
     else if (S.state === 'returning' && t >= RETURN) go('live');
   }
 
@@ -780,9 +782,9 @@
   function say(m) { S.msg = m; paint(); }
   function paint() {
     if (!ui) return;
-    const left = Math.max(0, Math.ceil(AWAY - (now() - S.t0)));
+    const left = Math.max(0, Math.ceil(away - (now() - S.t0)));
     ui.status.textContent = !S.cams ? 'Waiting for your video. Join the meeting with your camera on. Already in? Turn your camera off and on. (Video hooks: ' + S.calls + ')'
-      : { live: S.plate ? 'You are live. Snap to vanish.' : 'You are live.', vanishing: 'Turning to dust...', gone: 'Gone. Back in ' + left + 's', returning: 'Coming back...' }[S.state];
+      : { live: S.plate ? 'You are live. Snap to vanish.' : 'You are live.', vanishing: 'Turning to dust...', gone: away ? 'Gone. Back in ' + left + 's' : 'Gone. Snap to come back.', returning: 'Coming back...' }[S.state];
     ui.msg.textContent = S.msg;
     ui.go.textContent = S.state === 'gone' ? 'Come back now' : 'Vanish';
     ui.go.disabled = !S.plate || S.state === 'vanishing' || S.state === 'returning';
@@ -810,6 +812,14 @@
   const earBox = el('input');
   earBox.type = 'checkbox';
   earRow.append(earBox, el('span', '', 'Listen for a finger snap'));
+  // How long you stay gone.
+  const awayRow = el('label', 'display:flex;gap:8px;align-items:center;justify-content:space-between;margin-top:10px');
+  const awaySel = el('select', 'font:13px system-ui,sans-serif;padding:4px 6px;border-radius:6px;border:1px solid #3a3a44;background:#2b2b33;color:#ececec');
+  for (const [v, label] of [[30, '30 seconds'], [60, '1 minute'], [120, '2 minutes'], [300, '5 minutes'], [0, 'When I snap']]) {
+    const o = el('option', '', label); o.value = String(v); awaySel.append(o);
+  }
+  awaySel.value = String(away);
+  awayRow.append(el('span', '', 'Come back after'), awaySel);
   const teachBtn = el('button', btnCss + 'background:#2b2b33;color:#ececec', 'Teach my snap');
   const handBtn = el('button', btnCss + 'background:#2b2b33;color:#ececec', 'Hand gesture');
   const hint = el('div', 'margin-top:8px;color:#8a8a8a;font-size:12px', 'Shortcut: Option+Shift+V');
@@ -822,12 +832,12 @@
   const preview = el('video', 'display:block;width:100%;border-radius:6px;background:#000');
   preview.muted = true; preview.autoplay = true; preview.playsInline = true;
   previewBox.append(el('div', 'color:#8a8a8a;font-size:12px;margin-bottom:4px', 'What others see'), preview);
-  box.append(head, status, msg, previewBox, thumb, plateBtn, goBtn, earRow, teachBtn, ...(EXT ? [handBtn] : []), hint, diagBtn);
+  box.append(head, status, msg, previewBox, thumb, plateBtn, goBtn, awayRow, earRow, teachBtn, ...(EXT ? [handBtn] : []), hint, diagBtn);
   // Extension: hidden until a camera joins a call.
   if (EXT) box.style.display = 'none';
   const mount = () => { if (!box.isConnected && cardWin === window) document.body.append(box); };
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
-  ui = { box, status, msg, go: goBtn, ear: earBox, thumb, teach: teachBtn, preview, previewBox, hand: handBtn };
+  ui = { box, status, msg, go: goBtn, ear: earBox, thumb, teach: teachBtn, preview, previewBox, hand: handBtn, away: awaySel };
 
   function onKey(e) {
     if (e.altKey && e.shiftKey && e.code === 'KeyV') { e.preventDefault(); e.stopPropagation(); toggle(); }
@@ -884,7 +894,7 @@
     const d = {
       state: S.state, cams: S.cams, hooks: S.calls, swaps: S.swaps || 0, plate: S.plate ? S.plate.width + 'x' + S.plate.height : null,
       frame: S.dims || null, formats: Object.keys(S.fmts || {}), msPerFrame: Object.fromEntries(Object.entries(S.cost || {}).map(([k, [t, n]]) => [k, +(t / n).toFixed(1)])),
-      route: S.route || 'call', youDetected: S.core != null ? +(S.core * 100).toFixed(1) + '%' : null, errors: S.err || 0, lastError: S.lastErr || null, msg: S.msg, windows: views.length, cardInPopout: cardWin !== window,
+      route: S.route || 'call', away, youDetected: S.core != null ? +(S.core * 100).toFixed(1) + '%' : null, errors: S.err || 0, lastError: S.lastErr || null, msg: S.msg, windows: views.length, cardInPopout: cardWin !== window,
       previewSize: ui.preview.videoWidth + 'x' + ui.preview.videoHeight, renders: S.renders || 0,
       videos: views.flatMap(([w, desc]) => { try { return [...w.document.querySelectorAll('video')].filter((v) => v !== ui.preview).map((v) => {
         const st = desc.get.call(v), t = isStream(st) && st.getVideoTracks()[0], r = v.getBoundingClientRect();
@@ -900,7 +910,12 @@
       .then(() => say('Diagnostics copied. Paste them into your bug report.'))
       .catch(() => { console.log('[dust-out] diagnostics', text); say('Could not copy. Diagnostics are in the console (Cmd+Option+J).'); });
   }
-  const handlers = [[diagBtn, 'click', copyDiag], [close, 'click', hide], [plateBtn, 'click', savePlate], [goBtn, 'click', toggle],
+  function setAway() {
+    away = +awaySel.value;
+    try { localStorage.setItem(AWAY_KEY, String(away)); } catch (_) {}
+    paint();
+  }
+  const handlers = [[awaySel, 'change', setAway], [diagBtn, 'click', copyDiag], [close, 'click', hide], [plateBtn, 'click', savePlate], [goBtn, 'click', toggle],
     [earBox, 'change', toggleEar], [teachBtn, 'click', teach], [handBtn, 'click', openHand]];
   function bindCard() { for (const [node, type, fn] of handlers) { node.removeEventListener(type, fn); node.addEventListener(type, fn); } }
   bindCard();
