@@ -261,27 +261,44 @@ await p.waitForTimeout(300);
 check('R3 closing the tab gives the call its normal camera back', await p.evaluate(() => nativeSenderTrack.call(sender) === t2));
 
 // M. Google Meet on a locked-down laptop: the code pasted into the console (or run as a saved
-// snippet) on a page with Meet's script rules, with no extension. Console code skips the
-// page's script rules, which test code here does too.
-const mctx = await b.newContext();
-await mctx.route('https://meet.google.com/dust-test/**', (r) => r.fulfill({
-  contentType: 'text/html',
-  headers: { 'content-security-policy': "script-src 'nonce-dusttest' 'strict-dynamic'; require-trusted-types-for 'script'" },
-  body: readFileSync(new URL('./test.html', import.meta.url), 'utf8').replace(/<script>/g, '<script nonce="dusttest">'),
-}));
-const mp = await mctx.newPage();
-mp.on('pageerror', (e) => errors.push(e.message));
-await mp.goto('https://meet.google.com/dust-test/test.html');
-await mp.waitForTimeout(400);
+// snippet) on a page with Meet's script rules, with no extension. Meet also locks built-in call
+// objects so nothing can be added to them; 'prevent' copies what Meet does, 'freeze' is the worst
+// case. Console code skips the page's script rules, which test code here does too.
 const snippet = readFileSync(new URL('../docs/dust-out.js', import.meta.url), 'utf8');
-await mp.evaluate((c) => (0, eval)(c), snippet);
-check('M1 pasted code runs under Meet-style script rules', await mp.evaluate(() => !!window.__dustOut && document.body.innerText.includes('Dust Out')));
-await mp.evaluate(() => join());
-await mp.waitForTimeout(1500);
-check('M2 and hooks the outgoing video there', await mp.evaluate(() => __dustOut.S.cams === 1));
-await mctx.close();
+for (const lock of ['prevent', 'freeze']) {
+  const how = lock === 'freeze' ? 'Object.freeze' : 'Object.preventExtensions';
+  const mctx = await b.newContext();
+  await mctx.route('https://meet.google.com/dust-test/**', (r) => r.fulfill({
+    contentType: 'text/html',
+    headers: { 'content-security-policy': "script-src 'nonce-dusttest' 'strict-dynamic'; require-trusted-types-for 'script'" },
+    body: readFileSync(new URL('./test.html', import.meta.url), 'utf8')
+      .replace('<body', `<script nonce="dusttest">for (const o of [RTCPeerConnection.prototype, RTCRtpSender.prototype, MediaStreamTrack.prototype, HTMLMediaElement.prototype]) ${how}(o);</script><body`)
+      .replace(/<script>/g, '<script nonce="dusttest">'),
+  }));
+  const mp = await mctx.newPage();
+  mp.on('pageerror', (e) => errors.push(lock + ': ' + e.message));
+  await mp.goto('https://meet.google.com/dust-test/test.html');
+  await mp.waitForTimeout(400);
+  check(`M1 ${lock}: the page really is locked`, await mp.evaluate(() => !Object.isExtensible(RTCPeerConnection.prototype)));
+  await mp.evaluate((c) => (0, eval)(c), snippet);
+  check(`M2 ${lock}: pasted code runs and shows the card`, await mp.evaluate(() => !!window.__dustOut && document.body.innerText.includes('Dust Out')));
+  await mp.evaluate(() => join());
+  await mp.waitForTimeout(1500);
+  check(`M3 ${lock}: hooks the outgoing video`, await mp.evaluate(() => __dustOut.S.cams === 1));
+  check(`M4 ${lock}: the call still sees its own track`, await mp.evaluate(() => sender.track === filtered.getVideoTracks()[0]));
+  await mp.getByText('1. Save empty room').click();
+  await mp.evaluate(() => { window.person = false; });
+  await mp.waitForTimeout(5600);
+  await mp.evaluate(() => { window.person = true; });
+  await mp.waitForTimeout(400);
+  await mp.keyboard.press('Alt+Shift+KeyV');
+  await mp.waitForTimeout(2000);
+  check(`M5 ${lock}: snapping starts the crumble`, await mp.evaluate(() => __dustOut.S.state === 'vanishing'));
+  check(`M6 ${lock}: the other side gets effect frames`, await mp.evaluate(() => Object.keys(__dustOut.S.fmts).some((f) => f.startsWith('vanishing:'))), await mp.evaluate(() => Object.keys(__dustOut.S.fmts).join(' ')));
+  await mctx.close();
+}
 
-check('Z1 no errors from Snap Vanish or the page', errors.length === 0, errors.slice(0, 3).join(' | '));
+check('Z1 no errors from Dust Out or the page', errors.length === 0, errors.slice(0, 3).join(' | '));
 const failed = results.filter((r) => !r[0]);
 console.log('\n' + (results.length - failed.length) + '/' + results.length + ' passed');
 await b.close();

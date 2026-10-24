@@ -526,35 +526,71 @@
     return m;
   }
 
+  // Sites like Google Meet lock some built-in objects so nothing new can be added to them, so
+  // what's already hooked is remembered here rather than marked on the objects themselves.
+  const patched = new WeakSet();
+  // Replace a property, even on objects a site has partly locked. Returns false if it can't.
+  function override(obj, key, desc) {
+    try { if ('value' in desc) { obj[key] = desc.value; if (obj[key] === desc.value) return true; } } catch (_) {}
+    try { Object.defineProperty(obj, key, Object.assign({ configurable: true }, desc)); return true; } catch (_) { return false; }
+  }
+
   // Hook the call machinery and the video elements of a window: this tab, a call window the app
   // pops out, or a frame inside either. A pop-out can run its own copy of the call.
   function patchWin(win) {
     const PC = win.RTCPeerConnection && win.RTCPeerConnection.prototype, TX = win.RTCRtpSender && win.RTCRtpSender.prototype;
-    if (PC && !PC.__snapPatched) {
-      PC.__snapPatched = true;
-      const addTrack = PC.addTrack, addTransceiver = PC.addTransceiver, replaceTrack = TX.replaceTrack;
-      const sent = (snd, t, w) => { if (snd && w !== t) senders.set(snd, [t, replaceTrack]); return snd; };
-      PC.addTrack = function (t, ...st) { const w = wrap(t); return sent(addTrack.call(this, w, ...st), t, w); };
-      PC.addTransceiver = function (t, init) { const w = typeof t === 'string' ? t : wrap(t); const x = addTransceiver.call(this, w, init); sent(x.sender, t, w); return x; };
-      TX.replaceTrack = function (t) { const w = t && wrap(t); if (w !== t) senders.set(this, [t, replaceTrack]); else senders.delete(this); return replaceTrack.call(this, w); };
+    if (PC && TX && !patched.has(PC)) {
+      patched.add(PC);
+      const addTrack = PC.addTrack, addTransceiver = PC.addTransceiver, getSenders = PC.getSenders, getTransceivers = PC.getTransceivers;
+      const replaceTrack = TX.replaceTrack, senderTrack = Object.getOwnPropertyDescriptor(TX, 'track').get;
+      const replaceHook = function (t) { const w = t && wrap(t); if (w !== t) senders.set(this, [t, replaceTrack]); else senders.delete(this); return replaceTrack.call(this, w); };
       // The meeting app still sees its own track everywhere it looks.
-      const senderTrack = Object.getOwnPropertyDescriptor(TX, 'track').get;
-      Object.defineProperty(TX, 'track', { configurable: true, get() { const t = senderTrack.call(this); return (t && theirs.get(t)) || t; } });
+      const trackHook = { get() { const t = senderTrack.call(this); return (t && theirs.get(t)) || t; } };
+      const protoReplace = override(TX, 'replaceTrack', { value: replaceHook, writable: true });
+      const protoTrack = override(TX, 'track', trackHook);
+      // Where the shared sender code is locked, hook each sender as the call hands it out.
+      const hookSender = (snd) => {
+        if (!snd || patched.has(snd)) return snd;
+        patched.add(snd);
+        if (!protoReplace) override(snd, 'replaceTrack', { value: replaceHook, writable: true });
+        if (!protoTrack) override(snd, 'track', trackHook);
+        return snd;
+      };
+      const methods = {
+        addTrack(t, ...st) { const w = wrap(t), snd = addTrack.call(this, w, ...st); if (w !== t) senders.set(snd, [t, replaceTrack]); return hookSender(snd); },
+        addTransceiver(t, init) { const w = typeof t === 'string' ? t : wrap(t), x = addTransceiver.call(this, w, init); if (w !== t) senders.set(x.sender, [t, replaceTrack]); hookSender(x.sender); return x; },
+        getSenders() { return getSenders.call(this).map(hookSender); },
+        getTransceivers() { const xs = getTransceivers.call(this); xs.forEach((x) => hookSender(x.sender)); return xs; },
+      };
+      let protoPC = true;
+      for (const [k, f] of Object.entries(methods)) protoPC = override(PC, k, { value: f, writable: true }) && protoPC;
+      if (!protoPC) {
+        // Locked: hook each call connection as it's created instead.
+        const Real = win.RTCPeerConnection;
+        const Hooked = new Proxy(Real, {
+          construct(T, args, nt) {
+            const pc = Reflect.construct(T, args, nt);
+            for (const [k, f] of Object.entries(methods)) override(pc, k, { value: f, writable: true });
+            return pc;
+          },
+        });
+        if (!override(win, 'RTCPeerConnection', { value: Hooked, writable: true })) say("This site locks its call code, so Dust Out can't reach your video here.");
+      }
     }
     const TP = win.MediaStreamTrack && win.MediaStreamTrack.prototype;
-    if (TP && !TP.__snapPatched) {
-      TP.__snapPatched = true;
+    if (TP && !patched.has(TP)) {
+      patched.add(TP);
       const clone = TP.clone;
-      TP.clone = function () { const c = clone.call(this); try { family.set(c, this); } catch (_) {} return c; };
+      override(TP, 'clone', { value: function () { const c = clone.call(this); try { family.set(c, this); } catch (_) {} return c; }, writable: true });
       const mark = (proto, key) => {
         const d = proto && Object.getOwnPropertyDescriptor(proto, key);
-        if (d && d.get) Object.defineProperty(proto, key, { configurable: true, get() { const t = d.get.call(this); if (t) remote.add(t); return t; } });
+        if (d && d.get) override(proto, key, { get() { const t = d.get.call(this); if (t) remote.add(t); return t; } });
       };
       mark(win.RTCRtpReceiver && win.RTCRtpReceiver.prototype, 'track');
       mark(win.RTCTrackEvent && win.RTCTrackEvent.prototype, 'track');
     }
     // If the meeting app draws your self-view with its own renderer, hand that renderer our copy.
-    if (win.MediaStreamTrackProcessor && !win.MediaStreamTrackProcessor.__snapPatched) {
+    if (win.MediaStreamTrackProcessor && !patched.has(win.MediaStreamTrackProcessor)) {
       const Real = win === window ? RealProcessor : win.MediaStreamTrackProcessor;
       const Proc = new Proxy(Real, {
         construct(T, args, nt) {
@@ -565,16 +601,17 @@
           return Reflect.construct(T, args, nt);
         },
       });
-      Proc.__snapPatched = true;
-      win.MediaStreamTrackProcessor = Proc;
+      patched.add(Proc); patched.add(win.MediaStreamTrackProcessor);
+      override(win, 'MediaStreamTrackProcessor', { value: Proc, writable: true });
     }
     // Self-view: show our copy wherever the meeting app shows the video it is sending (or a duplicate of it).
     const proto = win.HTMLMediaElement && win.HTMLMediaElement.prototype;
-    if (!proto || proto.__snapPatched) return;
+    if (!proto || patched.has(proto)) return;
+    patched.add(proto);
     const desc = Object.getOwnPropertyDescriptor(proto, 'srcObject');
     const ourCopy = (st) => (isStream(st) && !st.__snapOrig ? copyFor(st.getVideoTracks()[0]) : null);
-    Object.defineProperty(proto, 'srcObject', {
-      configurable: true,
+    // If this can't be hooked, the regular check below still swaps the self-view.
+    override(proto, 'srcObject', {
       get() { const st = desc.get.call(this); return (st && st.__snapOrig) || st; },
       set(st) {
         let g = null;
@@ -583,8 +620,6 @@
         if (g) queueMicrotask(() => { try { follow(win); } catch (e) { failed(e); } });
       },
     });
-    proto.__snapPatched = true;
-    proto.__snapCopy = ourCopy;
     // A reloaded pop-out or frame is the same window with a fresh page: replace its old entry.
     const old = views.findIndex(([w]) => w === win);
     if (old >= 0) views.splice(old, 1);
