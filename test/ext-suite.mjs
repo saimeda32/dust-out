@@ -132,9 +132,11 @@ check('B7 reloading the meeting turns the camera off', wasOn && !(await sw.evalu
 // C. Page with Google Meet's strict script rules (where the bookmark is blocked).
 const m = await open('https://meet.google.com/dust-test/test.html');
 check('C1 runs despite Meet-style script rules', await m.evaluate(() => !!window.__dustOut));
-await m.evaluate(() => join());
+// Like Meet: the page takes the camera and sends it. Dust Out uses the camera route there.
+await m.evaluate(async () => { const cam = await navigator.mediaDevices.getUserMedia({ video: true }); await join(cam.getVideoTracks()[0]); });
 await m.waitForTimeout(1500);
-check('C2 hooks the outgoing video there too', await m.evaluate(() => __dustOut.S.cams === 1));
+check('C2 hooks your camera there (camera route) and shows the card', await m.evaluate(() => __dustOut.S.cams === 1 && __dustOut.S.route === 'camera' && document.body.innerText.includes('Dust Out')));
+check('C3 the effect is applied once, not twice', await m.evaluate(() => __dustOut.S.calls === 1));
 
 // D. Toolbar popup.
 check('D1 popup opens without errors', await extPage.evaluate(() => document.getElementById('state').textContent.length > 0));

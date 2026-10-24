@@ -43,7 +43,7 @@ To snap for real instead of using the shortcut: tick **Listen for a finger snap*
 | In Chrome | Extension | Bookmark |
 |---|---|---|
 | Microsoft Teams | Works | Works |
-| Google Meet | Should work; not tried in a real call yet | **Doesn't work.** Meet blocks bookmarks |
+| Google Meet | Should work; not tried in a real call yet. Turn off Meet's own background effects (on Meet you crumble under them) | **Doesn't work.** Meet blocks bookmarks |
 | Webex, Jitsi, Whereby, Slack huddles, other browser meetings | Toolbar button, **Turn on for this site**, reload before joining. Untested | Might work, depending on the site. Untested |
 | Zoom in the browser | Not supported yet | Not supported yet |
 | Desktop apps | No, Chrome only | No, Chrome only |

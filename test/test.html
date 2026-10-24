@@ -81,7 +81,9 @@ window.play = (kind, amp) => {
   const s = ac.createBufferSource(); s.buffer = bf; s.loop = true; s.connect(micOut); s.start(); }
 const realGum = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 // Like a real mic: every request gets its own track, so stopping one doesn't stop the others.
-navigator.mediaDevices.getUserMedia = async (c) => c && c.audio && !c.video ? micOut.stream.clone() : realGum(c);
+// Video requests get the fake camera, like a real one would.
+// Installed underneath, like Chrome's own camera, so anything that wrapped it first stays on top.
+MediaDevices.prototype.getUserMedia = async function (c) { return c && c.video ? new MediaStream([filtered.getVideoTracks()[0].clone()]) : c && c.audio ? micOut.stream.clone() : realGum(c); };
 document.getElementById('self').srcObject = filtered;
 // Lets tests see what a video element really shows, past Snap Vanish's patch.
 window.nativeSrc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'srcObject').get;
@@ -95,12 +97,12 @@ window.preClone = filtered.getVideoTracks()[0].clone();
 </script>
 <script>
 // Joining the meeting: send the filtered track over a real WebRTC connection.
-window.join = async () => {
+window.join = async (track = filtered.getVideoTracks()[0]) => {
   const a = new RTCPeerConnection(), z = new RTCPeerConnection();
   a.onicecandidate = (e) => e.candidate && z.addIceCandidate(e.candidate);
   z.onicecandidate = (e) => e.candidate && a.addIceCandidate(e.candidate);
   z.ontrack = (e) => { document.getElementById('remote').srcObject = new MediaStream([e.track]); };
-  window.sender = a.addTrack(filtered.getVideoTracks()[0], filtered);
+  window.sender = a.addTrack(track, new MediaStream([track]));
   await a.setLocalDescription(); await z.setRemoteDescription(a.localDescription);
   await z.setLocalDescription(); await a.setRemoteDescription(z.localDescription);
 };

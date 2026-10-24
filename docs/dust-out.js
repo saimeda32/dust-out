@@ -7,6 +7,9 @@
   try { if (window.opener && window.opener.__dustOut) { window.opener.__dustOut.show(); return; } } catch (_) { /* opener is another site */ }
   // The extension loads this before the meeting page starts; the bookmark runs it on demand.
   const EXT = window.__dustOutExt === true;
+  const CAMERA_FIRST = /(^|\.)meet\.google\.com$/.test(location.hostname);
+  let ui = null; // the control card, once built
+  try {
 
   const CRUMBLE = 6.2;   // seconds the dust animation takes
   const SPREAD = 2.8;    // seconds for the crumble to spread across your whole body
@@ -535,11 +538,37 @@
     try { Object.defineProperty(obj, key, Object.assign({ configurable: true }, desc)); return true; } catch (_) { return false; }
   }
 
+  // Camera route, for sites that lock their call code: wrap the camera video the site asks for.
+  // The effect then sits under any background effect the site adds itself.
+  function patchCamera(win) {
+    const devs = win.navigator.mediaDevices;
+    if (!devs || patched.has(devs)) return;
+    patched.add(devs);
+    const real = devs.getUserMedia.bind(devs);
+    const hooked = async (c) => {
+      const st = await real(c);
+      if (!c || !c.video) return st;
+      const out = new MediaStream(st.getAudioTracks());
+      for (const v of st.getVideoTracks()) out.addTrack(wrap(v));
+      return out;
+    };
+    const ok = override(devs, 'getUserMedia', { value: hooked, writable: true }) ||
+      override(win.MediaDevices.prototype, 'getUserMedia', { value: function (c) { return hooked(c); }, writable: true });
+    S.route = ok ? 'camera' : 'none';
+    // Run late (bookmark or console) the camera is usually on already, so it needs a fresh start.
+    const late = !EXT || document.readyState !== 'loading';
+    if (!ok) say("This site locks its camera and call code, so Dust Out can't reach your video here.");
+    else if (late) say('Turn your camera off and on once so Dust Out can take over.');
+  }
+
   // Hook the call machinery and the video elements of a window: this tab, a call window the app
   // pops out, or a frame inside either. A pop-out can run its own copy of the call.
   function patchWin(win) {
     const PC = win.RTCPeerConnection && win.RTCPeerConnection.prototype, TX = win.RTCRtpSender && win.RTCRtpSender.prototype;
-    if (PC && TX && !patched.has(PC)) {
+    // Google Meet sends your video through call code Dust Out can't reach, so it always uses the
+    // camera route there (and only that route, so the effect is never applied twice).
+    if (CAMERA_FIRST) patchCamera(win);
+    else if (PC && TX && !patched.has(PC)) {
       patched.add(PC);
       const addTrack = PC.addTrack, addTransceiver = PC.addTransceiver, getSenders = PC.getSenders, getTransceivers = PC.getTransceivers;
       const replaceTrack = TX.replaceTrack, senderTrack = Object.getOwnPropertyDescriptor(TX, 'track').get;
@@ -574,7 +603,8 @@
             return pc;
           },
         });
-        if (!override(win, 'RTCPeerConnection', { value: Hooked, writable: true })) say("This site locks its call code, so Dust Out can't reach your video here.");
+        // Fully locked (Google Meet): take your video at the camera instead.
+        if (!override(win, 'RTCPeerConnection', { value: Hooked, writable: true })) patchCamera(win);
       }
     }
     const TP = win.MediaStreamTrack && win.MediaStreamTrack.prototype;
@@ -661,19 +691,23 @@
   const sameOrigin = (win) => { try { return !!win.document; } catch (_) { return false; } };
   patchWin(window);
   // Pop-outs: keep checking each window the meeting app opens, since it may load a fresh page after opening.
+  // (If a site locks window.open, Dust Out just won't follow pop-outs there.)
   const realOpen = window.open;
-  window.open = function (...args) {
-    const win = realOpen.apply(this, args);
-    if (win) {
-      const iv = setInterval(() => {
-        if (win.closed) {
-          clearInterval(iv);
-          if (cardWin === win) moveCard(window);
-        } else if (sameOrigin(win)) patchWin(win);
-      }, 300);
-    }
-    return win;
-  };
+  override(window, 'open', {
+    writable: true,
+    value: function (...args) {
+      const win = realOpen.apply(this, args);
+      if (win) {
+        const iv = setInterval(() => {
+          if (win.closed) {
+            clearInterval(iv);
+            if (cardWin === win) moveCard(window);
+          } else if (sameOrigin(win)) patchWin(win);
+        }, 300);
+      }
+      return win;
+    },
+  });
   // Frames: the meeting app can run parts of a call inside same-origin frames.
   setInterval(() => {
     for (let i = views.length - 1; i > 0; i--) { try { if (views[i][0].closed || !views[i][0].document) views.splice(i, 1); } catch (_) { views.splice(i, 1); } }
@@ -783,7 +817,6 @@
 
   // Small control card. Built with plain DOM calls so it works under the meeting app's strict page rules.
   // Handlers use addEventListener: onclick-style handlers are dropped when the card moves windows.
-  let ui = null;
   function say(m) { S.msg = m; paint(); }
   function paint() {
     if (!ui) return;
@@ -904,7 +937,7 @@
     const d = {
       state: S.state, cams: S.cams, hooks: S.calls, swaps: S.swaps || 0, plate: S.plate ? S.plate.width + 'x' + S.plate.height : null,
       frame: S.dims || null, formats: Object.keys(S.fmts || {}), msPerFrame: Object.fromEntries(Object.entries(S.cost || {}).map(([k, [t, n]]) => [k, +(t / n).toFixed(1)])),
-      youDetected: S.core != null ? +(S.core * 100).toFixed(1) + '%' : null, errors: S.err || 0, lastError: S.lastErr || null, msg: S.msg, windows: views.length, cardInPopout: cardWin !== window,
+      route: S.route || 'call', youDetected: S.core != null ? +(S.core * 100).toFixed(1) + '%' : null, errors: S.err || 0, lastError: S.lastErr || null, msg: S.msg, windows: views.length, cardInPopout: cardWin !== window,
       previewSize: ui.preview.videoWidth + 'x' + ui.preview.videoHeight, renders: S.renders || 0,
       videos: views.flatMap(([w, desc]) => { try { return [...w.document.querySelectorAll('video')].filter((v) => v !== ui.preview).map((v) => {
         const st = desc.get.call(v), t = isStream(st) && st.getVideoTracks()[0], r = v.getBoundingClientRect();
@@ -929,4 +962,8 @@
   paint();
 
   window.__dustOut = { show: () => { mount(); box.style.display = ''; }, toggle, S };
+  } catch (e) {
+    // Say exactly what stopped it, so it can be fixed.
+    console.error('[dust-out] could not start:', e);
+  }
 })();

@@ -272,7 +272,7 @@ for (const lock of ['prevent', 'freeze']) {
     contentType: 'text/html',
     headers: { 'content-security-policy': "script-src 'nonce-dusttest' 'strict-dynamic'; require-trusted-types-for 'script'" },
     body: readFileSync(new URL('./test.html', import.meta.url), 'utf8')
-      .replace('<body', `<script nonce="dusttest">for (const o of [RTCPeerConnection.prototype, RTCRtpSender.prototype, MediaStreamTrack.prototype, HTMLMediaElement.prototype]) ${how}(o);</script><body`)
+      .replace('<body', `<script nonce="dusttest">for (const o of [RTCPeerConnection.prototype, RTCRtpSender.prototype, MediaStreamTrack.prototype, HTMLMediaElement.prototype]) ${how}(o); for (const k of ['open', 'RTCPeerConnection']) Object.defineProperty(window, k, { value: window[k], writable: false, configurable: false });</script><body`)
       .replace(/<script>/g, '<script nonce="dusttest">'),
   }));
   const mp = await mctx.newPage();
@@ -282,10 +282,12 @@ for (const lock of ['prevent', 'freeze']) {
   check(`M1 ${lock}: the page really is locked`, await mp.evaluate(() => !Object.isExtensible(RTCPeerConnection.prototype)));
   await mp.evaluate((c) => (0, eval)(c), snippet);
   check(`M2 ${lock}: pasted code runs and shows the card`, await mp.evaluate(() => !!window.__dustOut && document.body.innerText.includes('Dust Out')));
-  await mp.evaluate(() => join());
+  const route = await mp.evaluate(() => [__dustOut.S.route, __dustOut.S.msg]);
+  // Like Meet, the page takes the camera (again, after you turn it off and on) and sends it.
+  await mp.evaluate(async () => { const cam = await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); window.camTrack = cam.getVideoTracks()[0]; await join(camTrack); });
   await mp.waitForTimeout(1500);
-  check(`M3 ${lock}: hooks the outgoing video`, await mp.evaluate(() => __dustOut.S.cams === 1));
-  check(`M4 ${lock}: the call still sees its own track`, await mp.evaluate(() => sender.track === filtered.getVideoTracks()[0]));
+  check(`M3 ${lock}: hooks your video (route: ${route[0] || 'call'})`, await mp.evaluate(() => __dustOut.S.cams === 1), route[1]);
+  check(`M4 ${lock}: the call sends the video it was given`, await mp.evaluate(() => sender.track === camTrack));
   await mp.getByText('1. Save empty room').click();
   await mp.evaluate(() => { window.person = false; });
   await mp.waitForTimeout(5600);
