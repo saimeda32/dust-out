@@ -21,7 +21,7 @@ Free and open source, for Microsoft Teams and Google Meet in Chrome. No AI, no a
 
 | | Best for | Teams | Google Meet | Setup |
 |---|---|---|---|---|
-| **[Extension](#extension)** | Most people | Yes | Yes | 2 minutes, once |
+| **[Extension](#extension)** | Most people, and the only one with hand gesture | Yes | Yes | 2 minutes, once |
 | **[Bookmark](#bookmark)** | Extensions blocked, Teams | Yes | **No**, Meet blocks bookmarks | 30 seconds, click before each call |
 | **[Console snippet](#console-snippet)** | Extensions blocked, Meet | Yes | Yes | 1 minute once, run before each call |
 
@@ -66,7 +66,9 @@ It runs only in that tab until you reload. It's still code your IT team hasn't a
 
 **What others see** on the card is exactly what your call sends.
 
-To snap for real instead of using the shortcut: tick **Listen for a finger snap** and use **Teach my snap**, or click **Hand gesture** to snap on camera.
+To snap for real instead of using the shortcut:
+- **By sound** (every version): tick **Listen for a finger snap** and use **Teach my snap**.
+- **By hand on camera** (extension only): click **Hand gesture**. The bookmark and console snippet don't have it.
 
 <br clear="right">
 
@@ -111,7 +113,6 @@ npm test                          # build, then run both test suites
 |---|---|
 | `src/` | The code: `dust-out.js` (effect and hooks), `gesture-detect.js` (hand snap) |
 | `extension/` | Chrome extension; `dust-out.js` and `gesture-detect.js` are copied in by the build |
-| `bookmarklet/` | Hand-gesture helper for the bookmark version |
 | `docs/` | Install page (GitHub Pages), demo, and `character.js` for the cartoon cast |
 | `site.template.html` | Source of the install page |
 | `test/` | `suite.mjs` (bookmark and console), `ext-suite.mjs` (extension), demo recorders |

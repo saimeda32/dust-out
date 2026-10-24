@@ -627,7 +627,7 @@
       const st = desc.get.call(el), g = ourCopy(st);
       if (g) { desc.set.call(el, swapped(st, g)); follow(win); }
     }
-    if (win !== window) { win.addEventListener('keydown', onKey, true); win.addEventListener('message', onHelper); }
+    if (win !== window) win.addEventListener('keydown', onKey, true);
   }
 
   // The card follows the call into a pop-out. Chrome drops handlers on nodes in a closing
@@ -822,7 +822,7 @@
   const preview = el('video', 'display:block;width:100%;border-radius:6px;background:#000');
   preview.muted = true; preview.autoplay = true; preview.playsInline = true;
   previewBox.append(el('div', 'color:#8a8a8a;font-size:12px;margin-bottom:4px', 'What others see'), preview);
-  box.append(head, status, msg, previewBox, thumb, plateBtn, goBtn, earRow, teachBtn, handBtn, hint, diagBtn);
+  box.append(head, status, msg, previewBox, thumb, plateBtn, goBtn, earRow, teachBtn, ...(EXT ? [handBtn] : []), hint, diagBtn);
   // Extension: hidden until a camera joins a call.
   if (EXT) box.style.display = 'none';
   const mount = () => { if (!box.isConnected && cardWin === window) document.body.append(box); };
@@ -855,18 +855,13 @@
     if (!ear) { earBox.checked = true; await listen(true); }
     if (lesson && ear) say('Snap 3 times, a second apart.');
   }
-  // Hand gesture runs outside the page: in the extension, or (bookmark) a localhost helper window.
-  const HELPER = 'http://localhost:8777';
+  // Hand gesture (extension only): hand tracking runs in the extension, which messages this tab.
   let lastWave = 0, handOn = false;
   function openHand() {
-    if (EXT) {
-      handOn = !handOn;
-      handBtn.textContent = handOn ? 'Hand gesture: on' : 'Hand gesture';
-      window.postMessage({ dustOut: 'gesture', on: handOn }, location.origin);
-      return say(handOn ? 'Starting hand tracking...' : 'Hand gesture off.');
-    }
-    const win = cardWin.open(HELPER + '/gesture.html', 'dustOutGesture', 'popup,width=380,height=330');
-    say(win ? 'Hand gesture window opened. Keep it open.' : 'Pop-up blocked. Allow pop-ups for this site and try again.');
+    handOn = !handOn;
+    handBtn.textContent = handOn ? 'Hand gesture: on' : 'Hand gesture';
+    window.postMessage({ dustOut: 'gesture', on: handOn }, location.origin);
+    say(handOn ? 'Starting hand tracking...' : 'Hand gesture off.');
   }
   function sawSnap() {
     const t = now();
@@ -875,18 +870,16 @@
     say('Saw a snap.');
     toggle();
   }
-  function onHelper(e) {
+  function onExtension(e) {
     const d = e.data;
-    if (!d) return;
-    if (!EXT && e.origin === HELPER && d.dustOut === 'snap') return sawSnap();
-    if (EXT && e.source === window && d.dustOutExt) {
+    if (EXT && d && e.source === window && d.dustOutExt) {
       if (d.dustOutExt === 'snap') sawSnap();
       else if (d.dustOutExt === 'status') say(String(d.text || ''));
       else if (d.dustOutExt === 'show') window.__dustOut.show();
       else if (d.dustOutExt === 'gesture-off') { handOn = false; handBtn.textContent = 'Hand gesture'; }
     }
   }
-  window.addEventListener('message', onHelper);
+  window.addEventListener('message', onExtension);
   function copyDiag() {
     const d = {
       state: S.state, cams: S.cams, hooks: S.calls, swaps: S.swaps || 0, plate: S.plate ? S.plate.width + 'x' + S.plate.height : null,

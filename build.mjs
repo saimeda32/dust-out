@@ -2,7 +2,7 @@
 //   src/dust-out.js       -> extension/dust-out.js (Chrome extension)
 //                         -> docs/index.html (website, with the bookmark button)
 //                         -> docs/dust-out.js (the code to paste into the console)
-//   src/gesture-detect.js -> extension/ and bookmarklet/ (hand-gesture snap detector)
+//   src/gesture-detect.js -> extension/ (hand-gesture snap detector)
 //   extension/            -> dist/dust-out-extension.zip (download for "Load unpacked")
 import { readFileSync, writeFileSync, copyFileSync, mkdirSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -12,7 +12,6 @@ const core = readFileSync(here('./src/dust-out.js'), 'utf8');
 
 copyFileSync(here('./src/dust-out.js'), here('./extension/dust-out.js'));
 copyFileSync(here('./src/gesture-detect.js'), here('./extension/gesture-detect.js'));
-copyFileSync(here('./src/gesture-detect.js'), here('./bookmarklet/gesture-detect.js'));
 copyFileSync(here('./src/dust-out.js'), here('./docs/dust-out.js')); // for "Copy the code" (console snippet)
 
 const href = 'javascript:' + encodeURIComponent(core);

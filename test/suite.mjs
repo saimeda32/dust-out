@@ -6,7 +6,6 @@ import { readFileSync } from 'node:fs';
 import { serve } from './serve.mjs';
 
 const site = await serve(8765);
-const helperSite = await serve(8777, new URL('../bookmarklet/', import.meta.url).pathname);
 const html = readFileSync(new URL('../docs/index.html', import.meta.url), 'utf8');
 const href = html.match(/class="[^"]*\b(?:drag|chip)\b[^"]*" href="([^"]+)"/)[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const code = decodeURIComponent(href.slice('javascript:'.length));
@@ -213,17 +212,11 @@ check('I4 talking does not trigger it', !(await fires('speech', 0.6)));
 check('I5 loud talking does not trigger it', !(await fires('speech', 0.95)));
 check('I6 typing clicks do not trigger it', !(await fires('click', 0.05)));
 
-// J. Hand-gesture messages: only the helper's address is trusted.
-await p.evaluate(() => { __dustOut.S.msg = ''; window.postMessage({ dustOut: 'snap' }, '*'); });
+// J. Hand gesture is extension-only; page messages can't fake a snap.
+await p.evaluate(() => { __dustOut.S.msg = ''; window.postMessage({ dustOut: 'snap' }, '*'); window.postMessage({ dustOutExt: 'snap' }, '*'); });
 await p.waitForTimeout(300);
-check('J1 snap messages from other pages are ignored', !/Saw a snap/.test((await S()).msg));
-const [helper] = await Promise.all([ctx.waitForEvent('page'), p.getByText('Hand gesture').click()]);
-await helper.waitForLoadState();
-await helper.evaluate(() => fakeSnap());
-await p.waitForTimeout(400);
-check('J2 the gesture helper can trigger it', /Saw a snap/.test((await S()).msg));
-await p.evaluate(() => { __dustOut.S.armAt = 0; });
-await helper.close();
+check('J1 snap messages from the page are ignored', !/Saw a snap/.test((await S()).msg));
+check('J2 no Hand gesture button in the bookmark version', !(await p.evaluate(() => [...document.querySelectorAll('button')].some((b) => /Hand gesture/.test(b.textContent)))));
 
 // K. Hiding the card keeps the shortcut; the bookmark brings it back.
 await p.locator('button[title^="Hide"]').click();
@@ -237,21 +230,18 @@ await p.waitForTimeout(400);
 await p.evaluate(() => { const b = [...document.querySelectorAll('input[type=checkbox]')][0]; b.click(); });
 await p.waitForTimeout(800);
 check('R1 snaps are still heard after turning listening off and on', await fires('snap', 0.5));
-// Hand gesture from the card while it's in a pop-out.
+// Card buttons work while the card is in a pop-out.
 const [pop2] = await Promise.all([ctx.waitForEvent('page'), p.evaluate(() => { window.callWin2 = window.open('/test/blank.html?p2', 'callpopout2', 'popup,width=500,height=320'); })]);
 await pop2.waitForLoadState();
 await p.waitForTimeout(700);
 await p.evaluate(() => { const v = callWin2.document.createElement('video'); v.muted = true; callWin2.document.body.append(v); v.srcObject = new callWin2.MediaStream([t2]); });
 await p.waitForTimeout(500);
 check('R2a card is in the second pop-out', await pop2.evaluate(() => document.body.innerText.includes('Dust Out')));
-const [helper2] = await Promise.all([ctx.waitForEvent('page'), pop2.getByText('Hand gesture').click()]);
-await helper2.waitForLoadState();
-await p.evaluate(() => { __dustOut.S.msg = ''; });
-await helper2.evaluate(() => fakeSnap());
-await p.waitForTimeout(400);
-check('R2b hand gesture works while the card is in the pop-out', /Saw a snap/.test((await S()).msg), (await S()).msg);
-await p.evaluate(() => { __dustOut.S.armAt = 0; });
-await helper2.close();
+await pop2.getByRole('button', { name: 'Vanish' }).click();
+check('R2b the Vanish button works while the card is in the pop-out', await p.evaluate(() => !!__dustOut.S.armAt || __dustOut.S.state !== 'live'));
+await waitState('gone', 9000);
+await p.evaluate(() => __dustOut.toggle());
+await waitState('live', 6000);
 await pop2.close();
 await p.waitForTimeout(700);
 check('R2c card back home and buttons still work', await p.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent.includes('Vanish') || x.textContent.includes('Come back')); return !!b && document.body.innerText.includes('Dust Out'); }));
@@ -304,5 +294,5 @@ check('Z1 no errors from Dust Out or the page', errors.length === 0, errors.slic
 const failed = results.filter((r) => !r[0]);
 console.log('\n' + (results.length - failed.length) + '/' + results.length + ' passed');
 await b.close();
-site.close(); helperSite.close();
+site.close();
 process.exit(failed.length ? 1 : 0);
