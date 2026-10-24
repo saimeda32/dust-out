@@ -8,7 +8,7 @@ import { serve } from './serve.mjs';
 const site = await serve(8765);
 const helperSite = await serve(8777, new URL('../bookmarklet/', import.meta.url).pathname);
 const html = readFileSync(new URL('../bookmarklet/install.html', import.meta.url), 'utf8');
-const href = html.match(/class="[^"]*\bdrag\b[^"]*" href="([^"]+)"/)[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+const href = html.match(/class="[^"]*\b(?:drag|chip)\b[^"]*" href="([^"]+)"/)[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 const code = decodeURIComponent(href.slice('javascript:'.length));
 
 const results = [];

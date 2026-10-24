@@ -67,7 +67,7 @@ npx playwright install chromium   # used by the extension tests
 npm test                          # build, then run both test suites
 ```
 
-The code is in `src/`. `node build.mjs` copies it into `extension/`, builds the install page in `docs/` and the extension zip. The demo character lives in `test/avatar.js`; `node test/demo-gif.mjs` re-records the demo.
+The code is in `src/`. `node build.mjs` copies it into `extension/`, builds the install page in `docs/` and the extension zip. The cartoon cast (You, Alex and Sam) lives in `docs/character.js`; `node test/demo-gif.mjs` re-records the demo and the timeline the website uses to make Alex and Sam react.
 
 ## License
 

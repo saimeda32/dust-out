@@ -55,9 +55,7 @@
   .tag { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 8px; background: rgba(20, 22, 36, 0.72); color: var(--light); font-size: 13px; font-weight: 500; }
   .tag svg { width: 14px; height: 14px; }
   .side { display: grid; gap: 14px; grid-auto-rows: 1fr; }
-  .person { display: grid; place-items: center; }
-  .person i { display: block; width: 34%; aspect-ratio: 1; border-radius: 50%; background: var(--tile-line); margin-bottom: 10%; }
-  .person b { position: absolute; bottom: -22%; left: 18%; right: 18%; height: 60%; border-radius: 50% 50% 0 0; background: var(--tile-line); }
+  .person canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 22px; margin-top: 28px; }
   .cta { display: inline-block; padding: 15px 26px; border-radius: 999px; background: var(--dust); color: var(--on-dust); font: 700 17px var(--body); text-decoration: none; }
   .cta:hover { background: #e6b97c; }
@@ -155,8 +153,8 @@
         <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>You</span>
       </div>
       <div class="side" aria-hidden="true">
-        <div class="tile person"><i></i><b></b><span class="tag">Alex</span></div>
-        <div class="tile person"><i></i><b></b><span class="tag">Sam</span></div>
+        <div class="tile person" data-who="alex"><canvas></canvas><span class="tag">Alex</span></div>
+        <div class="tile person" data-who="sam"><canvas></canvas><span class="tag">Sam</span></div>
       </div>
     </div>
 
@@ -258,7 +256,39 @@
   </div>
 </footer>
 
+<script src="character.js"></script>
 <script>
+// Alex and Sam watch your tile: they nod along, then look shocked when you snap and crumble,
+// and smile when you come back. Timed to the demo video using the moments recorded with it.
+(() => {
+  const T = {"snap":1.3,"vanish":2.2,"gone":8.4,"back":9.1,"live":12.3,"duration":13.4};
+  const video = document.querySelector('.tile.main video');
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const cast = [...document.querySelectorAll('.person')].map((tile, i) => ({
+    tile, canvas: tile.querySelector('canvas'), who: Character(CAST[tile.dataset.who]), lag: i ? 0.35 : 0.1,
+  }));
+  const mood = (t, lag) => {
+    if (t >= T.snap + 0.55 + lag && t < T.back + 0.6 + lag) return 'surprised';
+    if (t >= T.live + lag) return 'happy';
+    return 'listen';
+  };
+  function paint(now) {
+    const t = video.currentTime || 0;
+    for (const c of cast) {
+      const r = c.tile.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+      const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+      if (c.canvas.width !== w || c.canvas.height !== h) { c.canvas.width = w; c.canvas.height = h; }
+      const x = c.canvas.getContext('2d');
+      // Frame the face: a window 620 tall around the head, as wide as the tile allows.
+      const scale = h / 620;
+      x.setTransform(scale, 0, 0, scale, w / 2 - 640 * scale, -90 * scale);
+      c.who.draw(x, now, { mood: still ? 'listen' : mood(t, c.lag) });
+    }
+    if (!still) requestAnimationFrame(paint);
+  }
+  requestAnimationFrame(paint);
+})();
+
 // The title crumbles into dust and reforms: once when the page opens, and whenever it's clicked.
 (() => {
   const box = document.getElementById('title'), h1 = box.querySelector('h1');

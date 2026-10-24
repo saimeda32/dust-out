@@ -17,7 +17,8 @@ copyFileSync(here('./src/gesture-detect.js'), here('./bookmarklet/gesture-detect
 const href = 'javascript:' + encodeURIComponent(core);
 const page = (assets) => readFileSync(here('./site.template.html'), 'utf8')
   .replace('__BOOKMARKLET__', href.replace(/&/g, '&amp;').replace(/"/g, '&quot;'))
-  .replaceAll('__ASSETS__', assets);
+  .replaceAll('__ASSETS__', assets)
+  .replace('__TIMELINE__', readFileSync(here('./docs/demo-timeline.json'), 'utf8').trim());
 writeFileSync(here('./docs/index.html'), page(''));
 writeFileSync(here('./bookmarklet/install.html'), page('../docs/'));
 
