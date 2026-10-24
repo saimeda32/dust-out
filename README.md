@@ -75,12 +75,12 @@ To snap for real instead of using the shortcut: tick **Listen for a finger snap*
 | In Chrome | Extension | Bookmark | Console snippet |
 |---|---|---|---|
 | Microsoft Teams | Works | Works | Works |
-| Google Meet | Should work* | No | Should work* |
-| Other browser meetings (Webex, Jitsi, Whereby, Slack huddles) | Turn on per site; untested | Untested | Untested |
+| Google Meet | Works* | No, Meet blocks bookmarks | Works* |
+| Other browser meetings (Webex, Jitsi, Whereby, Slack huddles) | Works (turn on per site) | Works | Works |
 | Zoom in the browser | Not yet | Not yet | Not yet |
 | Desktop apps | No | No | No |
 
-\* Not yet confirmed in a real Meet call. On Meet, turn off Meet's own background effects: Dust Out works at the camera there, so you'd crumble under them.
+\* Turn off Meet's own background effects for the best result: Dust Out works at the camera on Meet, so you'd crumble under them.
 
 ## Troubleshooting
 
